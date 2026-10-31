@@ -27,6 +27,8 @@ namespace NowOverlayer
                 PlayCount.Load();
                 Stats.Load();
                 Overlay.Create();
+                Updater.CleanUp();
+                Updater.Check(false);
                 _harmony = new Harmony(mod.Info.Id);
                 Patches.Apply(_harmony);
             }

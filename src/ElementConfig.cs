@@ -162,12 +162,13 @@ namespace NowOverlayer
             return c;
         }
 
-        // Layout of the user's reference screenshot.
+        // The author's own layout (1.14): status lines top-left, song title over a thicker progress bar,
+        // judgement counts and attempts at the top, BPM top-right. Webcam / web page items are left out (per PC).
         public static List<ElementConfig> Defaults()
         {
-            ElementConfig Line(ElementType t, float y) => new ElementConfig
+            ElementConfig Line(ElementType t, float y, float scale = 1f) => new ElementConfig
             {
-                Id = NewId(), Type = t, AnchorX = 0f, AnchorY = 1f, PivotX = 0f, PivotY = 0.5f, X = 16f, Y = y
+                Id = NewId(), Type = t, AnchorX = 0f, AnchorY = 1f, PivotX = 0f, PivotY = 0.5f, X = 16f, Y = y, Scale = scale
             };
 
             var list = new List<ElementConfig>
@@ -176,8 +177,14 @@ namespace NowOverlayer
                 Line(ElementType.XAccuracy, -31f - LineStep),
                 Line(ElementType.MusicTime, -31f - LineStep * 2),
                 Line(ElementType.TimingScale, -31f - LineStep * 3),
-                Create(ElementType.ProgressBar),
-                Create(ElementType.Combo),
+                new ElementConfig
+                {
+                    Id = NewId(), Type = ElementType.ProgressBar, AnchorX = 0.5f, AnchorY = 1f, PivotX = 0.5f, PivotY = 1f, Y = -5f, Scale = 1.35f
+                },
+                new ElementConfig
+                {
+                    Id = NewId(), Type = ElementType.Combo, AnchorX = 0.5f, AnchorY = 1f, PivotX = 0.5f, PivotY = 0.5f, Y = -185f, Scale = 1.2f
+                },
                 new ElementConfig
                 {
                     Id = NewId(), Type = ElementType.Bpm, AnchorX = 1f, AnchorY = 1f, PivotX = 1f, PivotY = 1f, X = -16f, Y = -16f
@@ -185,14 +192,23 @@ namespace NowOverlayer
                 new ElementConfig
                 {
                     Id = NewId(), Type = ElementType.Judgement, AnchorX = 0.5f, AnchorY = 0f, PivotX = 0.5f, PivotY = 0f,
-                    Y = 172f, FontSize = 30f, Color = "D958FF"
+                    Y = 81f, FontSize = 30f, Color = "D958FF", Font = BundledFont
                 },
                 new ElementConfig
                 {
-                    Id = NewId(), Type = ElementType.Attempt, AnchorX = 0.5f, AnchorY = 0f, PivotX = 0f, PivotY = 0f, X = 186f, Y = 38f
+                    Id = NewId(), Type = ElementType.Attempt, AnchorX = 0.5f, AnchorY = 0f, PivotX = 0f, PivotY = 0f, X = 119f, Y = 32f
+                },
+                Line(ElementType.Fps, -144f, 1.05f),
+                new ElementConfig
+                {
+                    Id = NewId(), Type = ElementType.SongInfo, AnchorX = 0.5f, AnchorY = 1f, PivotX = 0.5f, PivotY = 0.5f,
+                    Y = -54f, Scale = 1.94f, Font = BundledFont
                 }
             };
             return list;
         }
+
+        // 고도 마음체, shipped in the mod Font folder (stored by file name, like any Font-folder pick)
+        public const string BundledFont = "godoMaum.ttf";
     }
 }

@@ -8,10 +8,10 @@ namespace NowOverlayer
     {
         // Left empty here: XmlSerializer appends to an existing list, so defaults are filled in after Load.
         public List<ElementConfig> Elements = new List<ElementConfig>();
-        public float Size = 1f;
-        public AnimType Anim = AnimType.SlideIn;
-        public float AnimDuration = 0.6f;
-        public float AnimStagger = 0.05f;
+        public float Size = 0.8f;
+        public AnimType Anim = AnimType.DropDown;
+        public float AnimDuration = 1.13f;
+        public float AnimStagger = 0f;
 
         public bool Magnet = true;
         public bool MagnetScreen = true;
@@ -20,7 +20,7 @@ namespace NowOverlayer
         public float MagnetRange = 8f;   // screen px
         public float MagnetMargin = 16f; // reference px from the screen edge
 
-        public bool MilestoneEnabled = true;
+        public bool MilestoneEnabled;
         public string Milestones = "100,500,1000";
         public int MilestoneEvery = 1000;
         public string MilestoneColor = "FFD54A";
@@ -57,14 +57,15 @@ namespace NowOverlayer
         public ObsAction ObsOnDeath = new ObsAction { Record = 2, Delay = 1f };
 
         public Hotkey HkToggle = new Hotkey(KeyCode.O, true, true);
-        public Hotkey HkEditor = new Hotkey(KeyCode.E, true, true);
+        public Hotkey HkEditor = new Hotkey(KeyCode.N, true, true);
         public Hotkey HkNextPreset = new Hotkey(KeyCode.RightArrow, true, true);
         public Hotkey HkPrevPreset = new Hotkey(KeyCode.LeftArrow, true, true);
         public Hotkey HkCloseResult = new Hotkey();
         public Hotkey HkReplayIntro = new Hotkey();
         public bool PresetCtrl = true, PresetShift = true, PresetAlt;
         public bool OverlayHidden;
-        public bool HideGameTitle = true;     // the game's own big level caption in custom levels
+        public bool AutoUpdate = true;        // fetch new releases from GitHub at startup (applied on the next start)
+        public bool HideGameTitle = true;    // the game's own big level caption in custom levels
         public bool DiscordReplaceGame = true; // stop the game's own Discord presence while ours is on
 
         public int LayoutVersion;
@@ -238,6 +239,22 @@ namespace NowOverlayer
 
             Ui.Section("기록");
             GUILayout.Label("시도 횟수 · " + PlayCount.Status, Ui.Sub);
+            GUILayout.EndVertical();
+
+            Ui.Section("업데이트");
+            bool auto = Ui.Switch("자동 업데이트", AutoUpdate, "게임을 켤 때 새 버전을 받아 두고, 다음에 켤 때 적용돼요");
+            if (auto != AutoUpdate)
+            {
+                AutoUpdate = auto;
+                Save(Main.Mod);
+            }
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(Updater.Status, Ui.Sub);
+            GUILayout.FlexibleSpace();
+            GUI.enabled = !Updater.Busy;
+            if (GUILayout.Button("지금 확인", Ui.Ghost, GUILayout.Width(90))) Updater.Check(true);
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
             GUILayout.EndVertical();
             return changed;
         }
