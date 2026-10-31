@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    NowOverlayer's web helper: hosts Edge WebView2 off-screen and streams PNG frames to the mod over stdout.
+    Build: dotnet build -c Release  (copies itself to the game's Mods\NowOverlayer\Web)
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>NowOverlayer.Web</AssemblyName>
+    <RootNamespace>NowOverlayer.Web</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <OutDir>build\</OutDir>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>none</DebugType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AdofaiDir Condition="'$(AdofaiDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice</AdofaiDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+  <Target Name="CopyToMods" AfterTargets="Build" Condition="Exists('$(AdofaiDir)\Mods') And '$(NoCopy)' != 'true'">
+    <ItemGroup>
+      <WebOut Include="$(OutDir)*.exe;$(OutDir)*.dll;$(OutDir)*.config" />
+    </ItemGroup>
+    <MakeDir Directories="$(AdofaiDir)\Mods\NowOverlayer\Web" />
+    <Copy SourceFiles="@(WebOut)" DestinationFolder="$(AdofaiDir)\Mods\NowOverlayer\Web" />
+  </Target>
+</Project>

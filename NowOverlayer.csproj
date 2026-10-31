@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    빌드: dotnet build -c Release
+    빌드 후 게임 Mods\NowOverlayer 로 DLL, Info.json, 폰트를 자동 복사합니다 (-p:NoCopy=true 로 끄기).
+  -->
+  <PropertyGroup>
+    <AssemblyName>NowOverlayer</AssemblyName>
+    <RootNamespace>NowOverlayer</RootNamespace>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AdofaiDir Condition="'$(AdofaiDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\A Dance of Fire and Ice</AdofaiDir>
+    <Managed>$(AdofaiDir)\A Dance of Fire and Ice_Data\Managed</Managed>
+    <UMM>$(Managed)\UnityModManager</UMM>
+    <OutDir>build\</OutDir>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="UnityEngine"><HintPath>$(Managed)\UnityEngine.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(Managed)\UnityEngine.CoreModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(Managed)\UnityEngine.IMGUIModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(Managed)\UnityEngine.UI.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(Managed)\UnityEngine.UIModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.AudioModule"><HintPath>$(Managed)\UnityEngine.AudioModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(Managed)\UnityEngine.TextRenderingModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(Managed)\UnityEngine.TextCoreFontEngineModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(Managed)\Unity.TextMeshPro.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(Managed)\UnityEngine.InputLegacyModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(Managed)\Newtonsoft.Json.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(Managed)\Assembly-CSharp.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="RDTools"><HintPath>$(Managed)\RDTools.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityModManager"><HintPath>$(UMM)\UnityModManager.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(UMM)\0Harmony.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="web\**" />
+    <None Remove="web\**" />
+    <None Include="Info.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Font\Maplestory Bold.ttf" CopyToOutputDirectory="PreserveNewest" Link="Font\Maplestory Bold.ttf" />
+  </ItemGroup>
+  <Target Name="CopyToMods" AfterTargets="Build" Condition="Exists('$(AdofaiDir)\Mods') And '$(NoCopy)' != 'true'">
+    <MakeDir Directories="$(AdofaiDir)\Mods\NowOverlayer\Font" />
+    <Copy SourceFiles="$(OutDir)NowOverlayer.dll;$(OutDir)Info.json" DestinationFolder="$(AdofaiDir)\Mods\NowOverlayer" />
+    <Copy SourceFiles="$(OutDir)Font\Maplestory Bold.ttf" DestinationFolder="$(AdofaiDir)\Mods\NowOverlayer\Font" />
+  </Target>
+  <!-- 설치 exe 는 바탕화면 claude_adofai\NowTweaks\installer_src\설치파일_다시만들기.bat 로 만들어요 -->
+
+</Project>

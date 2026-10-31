@@ -1,0 +1,14 @@
+build/
+obj/
+bin/
+web/build/
+web/obj/
+*.user
+.vs/
+
+# screenshots of the game window used while developing
+preview*.png
+
+# third-party font: get it from the publisher (see README)
+Font/*.ttf
+Font/*.otf
