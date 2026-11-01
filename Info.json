@@ -2,7 +2,7 @@
   "Id": "NowOverlayer",
   "DisplayName": "NowOverlayer",
   "Author": "claude",
-  "Version": "1.18.1",
+  "Version": "1.19.0",
   "AssemblyName": "NowOverlayer.dll",
   "EntryMethod": "NowOverlayer.Main.Load"
 }

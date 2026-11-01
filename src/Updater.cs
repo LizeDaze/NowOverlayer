@@ -17,6 +17,7 @@ namespace NowOverlayer
 
         public static string Status = "아직 확인 안 함";
         public static bool Busy;
+        public static string Found; // version being downloaded right now (UpdateNotice)
         public static string Ready; // version downloaded and waiting for a restart (UpdateNotice)
         private static string _staged; // version already downloaded this session
 
@@ -86,6 +87,7 @@ namespace NowOverlayer
             }
 
             Status = "v" + tag + " 받는 중…";
+            Found = tag;
             byte[] dll = null, info = null;
             var fonts = new System.Collections.Generic.List<FontFile>();
             foreach (JToken a in (JArray)rel["assets"] ?? new JArray())
@@ -110,6 +112,7 @@ namespace NowOverlayer
                 if (data == null || data.Length == 0)
                 {
                     Status = "받기 실패: " + file;
+                    Found = null;
                     Busy = false;
                     yield break;
                 }
@@ -122,6 +125,7 @@ namespace NowOverlayer
             if (dll == null || info == null || dll.Length < 4096 || dll[0] != 'M' || dll[1] != 'Z')
             {
                 Status = "v" + tag + " 릴리스에 업데이트 파일이 없어요";
+                Found = null;
                 Busy = false;
                 yield break;
             }
@@ -134,7 +138,6 @@ namespace NowOverlayer
                 _staged = tag;
                 Ready = tag;
                 Status = "v" + tag + " 받아 둠 · 게임을 다시 켜면 적용돼요";
-                Overlay.Instance?.ShowToast("NowOverlayer v" + tag + " 업데이트 · 다시 켜면 적용");
                 Main.Log("Update v" + tag + " downloaded");
             }
             catch (Exception e)
@@ -142,6 +145,7 @@ namespace NowOverlayer
                 Status = "업데이트 쓰기 실패: " + e.Message;
                 Main.LogError("Update failed", e);
             }
+            Found = null;
             Busy = false;
             if (manual) Overlay.Instance?.ShowToast(Status);
         }

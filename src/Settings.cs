@@ -271,7 +271,7 @@ namespace NowOverlayer
 
             Ui.Section("업데이트");
             if (GuideDismissed && GUILayout.Button("처음 안내 다시 보기", Ui.Ghost)) GuideDismissed = false;
-            bool auto = Ui.Switch("자동 업데이트", AutoUpdate, "게임을 켤 때 새 버전을 받아 두고, 다음에 켤 때 적용돼요");
+            bool auto = Ui.Switch("자동 업데이트", AutoUpdate, "게임 중에도 5분마다 새 버전을 찾아서 바로 받아 두고, 오른쪽 아래 알림의 [재시작]으로 적용해요");
             if (auto != AutoUpdate)
             {
                 AutoUpdate = auto;
