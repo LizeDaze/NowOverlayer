@@ -17,6 +17,7 @@ namespace NowOverlayer
 
         public static string Status = "아직 확인 안 함";
         public static bool Busy;
+        public static string Ready; // version downloaded and waiting for a restart (UpdateNotice)
         private static string _staged; // version already downloaded this session
 
         public static void Check(bool manual)
@@ -131,6 +132,7 @@ namespace NowOverlayer
                 Replace(Path.Combine(Main.Mod.Path, "NowOverlayer.dll"), dll);
                 Replace(Path.Combine(Main.Mod.Path, "Info.json"), info); // last: it tells UMM the version
                 _staged = tag;
+                Ready = tag;
                 Status = "v" + tag + " 받아 둠 · 게임을 다시 켜면 적용돼요";
                 Overlay.Instance?.ShowToast("NowOverlayer v" + tag + " 업데이트 · 다시 켜면 적용");
                 Main.Log("Update v" + tag + " downloaded");

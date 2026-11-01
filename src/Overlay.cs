@@ -47,6 +47,7 @@ namespace NowOverlayer
             DontDestroyOnLoad(go);
             Instance = go.AddComponent<Overlay>();
             go.AddComponent<OverlayEditor>();
+            go.AddComponent<UpdateNotice>();
             Instance.Build();
         }
 
