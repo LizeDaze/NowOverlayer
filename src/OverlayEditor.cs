@@ -1083,7 +1083,7 @@ namespace NowOverlayer
 
             if (c.Type != ElementType.ProgressBar && c.Type != ElementType.Web)
             {
-                Ui.Section(c.Type == ElementType.Combo ? "제목 색" : c.Type == ElementType.Image ? "색 입히기" : c.Type == ElementType.Webcam ? "테두리 색" : "글자");
+                Ui.Section(c.Type == ElementType.Combo ? "Combo 글자 색" : c.Type == ElementType.Image ? "색 입히기" : c.Type == ElementType.Webcam ? "테두리 색" : "글자");
                 if (ElementConfig.IsText(c.Type) || c.Type == ElementType.Combo) changed |= DrawItemFont(c);
                 if (ElementConfig.IsText(c.Type))
                 {
@@ -1119,6 +1119,15 @@ namespace NowOverlayer
 
             if (c.Type == ElementType.Combo)
             {
+                Ui.Section("콤보 숫자 색");
+                string nc = Settings.NumberColorPicker(c.NumberColor);
+                if (nc != c.NumberColor)
+                {
+                    c.NumberColor = nc;
+                    changed = true;
+                }
+                GUILayout.EndVertical();
+
                 Ui.Section("콤보 모양");
                 int layout = c.ComboLayout;
                 if (Ui.Segmented(ref layout, "제목 위", "숫자 위", "한 줄"))
@@ -1126,7 +1135,7 @@ namespace NowOverlayer
                     c.ComboLayout = layout;
                     changed = true;
                 }
-                GUILayout.Label(Settings.ComboLook(c.Color, layout), Ui.Body);
+                GUILayout.Label(Settings.ComboLook(c, layout), Ui.Body);
                 GUILayout.EndVertical();
             }
 

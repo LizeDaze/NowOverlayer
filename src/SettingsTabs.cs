@@ -264,7 +264,19 @@ namespace NowOverlayer
                     }
                     changed = true;
                 }
-                GUILayout.Label(ComboLook(combo.Color, layout), _comboPreview ?? (_comboPreview = new GUIStyle(Ui.H2) { alignment = TextAnchor.MiddleCenter, richText = true }));
+                GUILayout.Label(ComboLook(combo, layout), _comboPreview ?? (_comboPreview = new GUIStyle(Ui.H2) { alignment = TextAnchor.MiddleCenter, richText = true }));
+                Ui.Divider();
+                GUILayout.Label("콤보 숫자 색", Ui.Body);
+                string nc = NumberColorPicker(combo.NumberColor);
+                if (nc != combo.NumberColor)
+                {
+                    foreach (ElementConfig c in Elements)
+                    {
+                        if (c.Type == ElementType.Combo) c.NumberColor = nc;
+                    }
+                    changed = true;
+                }
+                GUILayout.Label("Combo 글자 색은 [화면 편집]에서 콤보를 누르면 바꿀 수 있어요.", Ui.Sub);
             }
             GUILayout.EndVertical();
 
@@ -276,11 +288,37 @@ namespace NowOverlayer
             return changed;
         }
 
-        // small rich-text picture of a combo layout for the pickers
-        internal static string ComboLook(string titleHex, int layout)
+        private static readonly string[] NumberSwatches =
+            { "FF6D6D", "E44343", "FFFFFF", "FFDA45", "FF9F43", "60FF4E", "4FC3FF", "3182F6", "D958FF", "FF7EB6" };
+
+        // "" = 기본 (red gradient / theme), else RRGGBB. Shared by the 색 테마 tab and the editor panel.
+        internal static string NumberColorPicker(string current)
         {
-            string title = "<color=#" + (Theme.ColorsWords ? Main.Settings.ThemeColor : titleHex) + ">Combo</color>";
-            string num = "<color=#" + (Theme.ColorsNumbers ? Main.Settings.ThemeColor : "FF6D6D") + "><size=30>257</size></color>";
+            string result = current ?? "";
+            bool auto = result.Length == 0;
+            if (GUILayout.Button(auto ? "● 기본 · 콤보가 쌓일수록 진해지는 빨강" : "기본 색으로 되돌리기", auto ? Ui.RowOn : Ui.Row))
+                result = "";
+            Ui.FlowBegin();
+            foreach (string hex in NumberSwatches)
+            {
+                Ui.FlowItem(32f);
+                if (Ui.ColorSwatch(Ui.Hex(hex), string.Equals(hex, result, StringComparison.OrdinalIgnoreCase))) result = hex;
+            }
+            Ui.FlowEnd();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("직접 입력  #", Ui.Sub, GUILayout.Width(80));
+            string hexIn = GUILayout.TextField(result, 6, Ui.Field, GUILayout.Width(110));
+            GUILayout.EndHorizontal();
+            if (hexIn != result && hexIn.Length == 6 && ColorUtility.TryParseHtmlString("#" + hexIn, out _)) result = hexIn.ToUpperInvariant();
+            return result;
+        }
+
+        // small rich-text picture of a combo layout for the pickers
+        internal static string ComboLook(ElementConfig c, int layout)
+        {
+            string title = "<color=#" + (Theme.ColorsWords ? Main.Settings.ThemeColor : c.Color) + ">Combo</color>";
+            string numHex = !string.IsNullOrEmpty(c.NumberColor) ? c.NumberColor : Theme.ColorsNumbers ? Main.Settings.ThemeColor : "FF6D6D";
+            string num = "<color=#" + numHex + "><size=30>257</size></color>";
             return layout == 0 ? title + "\n" + num : layout == 1 ? num + "\n" + title : title + "  |  " + num;
         }
 

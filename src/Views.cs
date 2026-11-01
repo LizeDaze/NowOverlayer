@@ -292,7 +292,10 @@ namespace NowOverlayer
             _value.text = ValueText(s.Combo);
             float t = Mathf.Clamp01(s.Combo / 1000f);
             t = t >= 1f ? 1f : 1f - Mathf.Pow(2f, -10f * t);
-            _baseColor = Theme.ColorsNumbers ? Theme.Color : Color.Lerp(Snapshot.Hex("FF6D6D"), Snapshot.Hex("DA3636"), t);
+            // the item's own number color wins over the theme
+            _baseColor = !string.IsNullOrEmpty(Cfg.NumberColor) ? Snapshot.Hex(Cfg.NumberColor)
+                : Theme.ColorsNumbers ? Theme.Color
+                : Color.Lerp(Snapshot.Hex("FF6D6D"), Snapshot.Hex("DA3636"), t);
             _value.color = _baseColor;
             if (up && IsMilestone(s.Combo, Main.Settings)) PlayMilestone(s.Combo);
         }
