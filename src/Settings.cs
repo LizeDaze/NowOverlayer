@@ -35,7 +35,8 @@ namespace NowOverlayer
         public int ThemeMode;               // Theme.Off / Numbers / Words / All
         public string ThemeColor = "FF4757";
         public bool GuideDismissed;
-        public bool FontAll = true;         // picking an overlay font also clears every item's own font         // the "처음이라면" card on the 일반 page
+        public bool FontAll = true;         // picking an overlay font also clears every item's own font
+        public bool SimpleMode = true;      // UMM window shows the one-page 간편 설정 instead of every tab
 
         public List<Preset> Presets = new List<Preset>();
         public string ActivePreset = "";
@@ -136,8 +137,13 @@ namespace NowOverlayer
             GUILayout.Label("<color=#FF4757>NOW</color>OVERLAYER", Ui.Brand);
             GUILayout.Label("v" + Main.Mod.Info.Version, _verStyle ?? (_verStyle = new GUIStyle(Ui.Sub) { margin = new RectOffset(6, 0, 0, 0) }));
             GUILayout.Space(18);
-            Ui.RailNav(ref _tab, TabNames);
-            if (_tab != 6)
+            if (SimpleMode)
+            {
+                int one = 0;
+                Ui.RailNav(ref one, SimpleTabName);
+            }
+            else Ui.RailNav(ref _tab, TabNames);
+            if (SimpleMode || _tab != 6)
             {
                 _capture = -1;
                 Hotkeys.Capturing = false;
@@ -146,15 +152,22 @@ namespace NowOverlayer
             GUILayout.Space(16);
             if (GUILayout.Button("화면 편집", Ui.Primary, GUILayout.Height(42))) OverlayEditor.Open();
             GUILayout.Label(HkEditor.Label(), _hintStyle ?? (_hintStyle = new GUIStyle(Ui.Sub) { alignment = TextAnchor.MiddleCenter }));
+            GUILayout.Space(8);
+            if (GUILayout.Button(SimpleMode ? "자세한 설정 보기" : "간편 설정으로", Ui.Ghost, GUILayout.Height(32)))
+            {
+                SimpleMode = !SimpleMode;
+                Save(Main.Mod);
+            }
             GUILayout.EndVertical();
 
             // content: big page title + one-line description, then the page
             GUILayout.BeginVertical(_contentStyle ?? (_contentStyle = new GUIStyle { padding = new RectOffset(26, 24, 22, 18) }), GUILayout.Width(contentW), GUILayout.MaxWidth(contentW));
-            GUILayout.Label(TabNames[_tab], Ui.PageTitle);
-            GUILayout.Label(TabSubs[_tab], Ui.PageSub);
+            GUILayout.Label(SimpleMode ? SimpleTabName[0] : TabNames[_tab], Ui.PageTitle);
+            GUILayout.Label(SimpleMode ? "다섯 가지만 정하면 끝나요. 더 많은 설정은 왼쪽 아래 [자세한 설정 보기]에 있어요." : TabSubs[_tab], Ui.PageSub);
 
-            switch (_tab)
+            switch (SimpleMode ? -1 : _tab)
             {
+                case -1: changed |= DrawSimple(); break;
                 case 0: changed |= DrawGeneral(); break;
                 case 1: changed |= DrawTheme(); break;
                 case 2: changed |= DrawFonts(); break;
@@ -172,6 +185,8 @@ namespace NowOverlayer
 
             if (changed) Overlay.Instance?.ApplySettings();
         }
+
+        private static readonly string[] SimpleTabName = { "간편 설정" };
 
         private static readonly string[] TabNames = { "일반", "색 테마", "글꼴", "애니메이션", "효과", "프리셋", "단축키", "연동" };
 
