@@ -14,6 +14,8 @@ namespace NowOverlayer
         private WebCamTexture _cam;
         private string _device;
         private float _hiddenSince = -1f;
+        private RenderTexture _hold;     // last picture, shown while the camera reopens
+        private float _openedAt, _lastFrame;
 
         public WebcamView(ElementConfig cfg, Transform parent)
         {
@@ -80,15 +82,68 @@ namespace NowOverlayer
                 if (_hiddenSince < 0f) _hiddenSince = Time.unscaledTime;
                 else if (Time.unscaledTime - _hiddenSince > 5f) StopCamera();
             }
-            if (_cam != null && _cam.didUpdateThisFrame) UpdateUv();
+            if (_cam != null && _cam.didUpdateThisFrame)
+            {
+                _lastFrame = Time.unscaledTime;
+                if (_image.texture != _cam) _image.texture = _cam; // reopened: live again
+                UpdateUv();
+            }
+            // a camera that stops sending frames (it happens around level loads) is reopened
+            else if (want && _cam != null && Time.unscaledTime - _lastFrame > 2.5f && Time.unscaledTime - _openedAt > 4f)
+            {
+                Main.Log("Webcam stalled, reopening");
+                Reopen();
+            }
+        }
+
+        // Each level start reopens the camera, so a picture that froze on the last load does not carry over.
+        public override void OnLevelStart()
+        {
+            if (_cam != null) Reopen();
+        }
+
+        private void Reopen()
+        {
+            if (_cam.width > 16)
+            {
+                if (!_hold || _hold.width != _cam.width || _hold.height != _cam.height)
+                {
+                    ReleaseHold();
+                    _hold = new RenderTexture(_cam.width, _cam.height, 0);
+                }
+                Graphics.Blit(_cam, _hold);
+                _image.texture = _hold;
+            }
+            else
+            {
+                _image.texture = null;
+            }
+            _cam.Stop();
+            Object.Destroy(_cam);
+            _cam = null;
+            Open();
+        }
+
+        private void ReleaseHold()
+        {
+            if (!_hold) return;
+            if (_image.texture == _hold) _image.texture = null;
+            _hold.Release();
+            Object.Destroy(_hold);
+            _hold = null;
         }
 
         private void StartCamera()
         {
             StopCamera();
             _device = Cfg.Url ?? "";
+            if (Open()) _image.texture = _cam;
+        }
+
+        private bool Open()
+        {
             WebCamDevice[] devices = WebCamTexture.devices;
-            if (devices.Length == 0) return;
+            if (devices.Length == 0) return false;
             string name = devices[0].name;
             foreach (WebCamDevice d in devices)
             {
@@ -96,7 +151,8 @@ namespace NowOverlayer
             }
             _cam = new WebCamTexture(name, 1280, 720, 30);
             _cam.Play();
-            _image.texture = _cam;
+            _openedAt = _lastFrame = Time.unscaledTime;
+            return true;
         }
 
         private void StopCamera()
@@ -192,6 +248,10 @@ namespace NowOverlayer
             return names;
         }
 
-        public override void Dispose() => StopCamera();
+        public override void Dispose()
+        {
+            StopCamera();
+            ReleaseHold();
+        }
     }
 }

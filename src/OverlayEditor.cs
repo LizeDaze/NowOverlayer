@@ -35,6 +35,7 @@ namespace NowOverlayer
             {
                 Main.LogError("Close UMM window failed", e);
             }
+            EditorScene.Enter(); // freeze the level, hide other mods' HUDs (before the screen grab)
             // grab the game screen first (mod window closed, overlay hidden) for the fitted board's background
             _opening = true;
             Overlay.Instance.StartCoroutine(Overlay.Instance.GrabScreen(tex =>
@@ -55,6 +56,7 @@ namespace NowOverlayer
             _boardSet = null;
             Overlay.Instance?.SetFit(null, null);
             SetShot(null);
+            EditorScene.Leave();
             Main.Settings.Save(Main.Mod);
         }
 
@@ -206,12 +208,10 @@ namespace NowOverlayer
                 }
                 case ElementType.Webcam:
                 {
-                    float d = stage.height - 24f;
-                    var cam = new Rect(stage.center.x - d / 2f, stage.y + 12f, d, d);
-                    GUI.DrawTexture(cam, Sprites.Circle.texture, ScaleMode.StretchToFill, true, 0f, Ui.Hex("F04452"), 0f, 0f);
-                    var inner = new Rect(cam.x + 3f, cam.y + 3f, cam.width - 6f, cam.height - 6f);
-                    GUI.DrawTexture(inner, Sprites.Circle.texture, ScaleMode.StretchToFill, true, 0f, Ui.Hex("2A2A33"), 0f, 0f);
-                    GUI.Label(inner, "CAM", Ui.Preview);
+                    float h = stage.height - 24f;
+                    var cam = new Rect(stage.center.x - h * 8f / 9f, stage.y + 12f, h * 16f / 9f, h);
+                    Ui.DrawRect(cam, Ui.Hex("2A2A33"));
+                    GUI.Label(cam, "CAM", Ui.Preview);
                     break;
                 }
                 case ElementType.Image:

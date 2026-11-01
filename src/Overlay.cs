@@ -233,6 +233,7 @@ namespace NowOverlayer
         private void OnApplicationQuit() => OnDestroy();
 
         public bool IsVisible => Canvas && Canvas.enabled;
+        public bool Playing => _shown; // a level is being played (between Show and Hide)
 
         // ---- entry animation ----
 
@@ -464,6 +465,7 @@ namespace NowOverlayer
                 _timingCount = 0;
                 _shown = true;
                 _dirty = true;
+                foreach (ElementView v in Views) v.OnLevelStart();
                 PlayIntro();
             }
             catch (Exception e)

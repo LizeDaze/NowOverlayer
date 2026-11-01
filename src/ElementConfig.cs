@@ -117,7 +117,7 @@ namespace NowOverlayer
                 case ElementType.MapBest: return "처음부터 깬 판 중 가장 높은 절대정확도";
                 case ElementType.FirstClear: return "이 맵을 처음 깬 날짜와 클리어 횟수";
                 case ElementType.Image: return "PNG·JPG·GIF를 화면에 표시 (움직이는 GIF도 돼요)";
-                case ElementType.Webcam: return "캠 화면을 둥글게·원형으로 (거울 모드·확대)";
+                case ElementType.Webcam: return "캠 화면을 띄워요 (모양·테두리·거울 모드·확대)";
             }
             return DisplayName(t);
         }
@@ -148,6 +148,8 @@ namespace NowOverlayer
                     c.Width = 400f;
                     c.Height = 225f;
                     c.Url = "";
+                    c.Shape = 0;   // plain rectangle, no border
+                    c.Border = 0f;
                     break;
                 case ElementType.Image:
                     c.Width = 0f;

@@ -17,6 +17,9 @@ namespace NowOverlayer
 
         public virtual void Dispose() { }
 
+        // a level (re)started: Overlay.Show
+        public virtual void OnLevelStart() { }
+
         public void ApplyLayout(float globalSize)
         {
             _size = globalSize;
