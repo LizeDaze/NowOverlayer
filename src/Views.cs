@@ -236,11 +236,15 @@ namespace NowOverlayer
             _title.color = TitleColor;
             // ElementConfig.ComboLayout: 0 title over the number, 1 number over the title, 2 one line "Combo | 257"
             int layout = Cfg.ComboLayout;
+            // ComboGap moves the title away from (or toward) the number; the box grows with it
+            float gap = layout == 2 ? 0f : Cfg.ComboGap;
             _title.gameObject.SetActive(layout != 2);
-            _titleRt.anchoredPosition = new Vector2(0f, layout == 1 ? -TitleY : TitleY);
-            _valueRt.anchoredPosition = new Vector2(0f, layout == 1 ? 5f : -5f);
-            _valueRt.sizeDelta = new Vector2(layout == 2 ? 560f : 300f, 110f);
-            Root.sizeDelta = layout == 2 ? new Vector2(560f, 120f) : new Vector2(300f, 170f);
+            _titleRt.anchoredPosition = new Vector2(0f, (layout == 1 ? -1f : 1f) * (TitleY + gap / 2f));
+            _valueRt.anchoredPosition = new Vector2(0f, (layout == 1 ? 1f : -1f) * (5f + gap / 2f));
+            // one line: the number is drawn at the title's size, so the box is a short strip
+            _value.fontSize = layout == 2 ? _title.fontSize : 108f;
+            _valueRt.sizeDelta = layout == 2 ? new Vector2(360f, 44f) : new Vector2(300f, 110f);
+            Root.sizeDelta = layout == 2 ? new Vector2(360f, 48f) : new Vector2(300f, Mathf.Max(120f, 170f + gap));
             _last = -1;
         }
 
@@ -249,7 +253,7 @@ namespace NowOverlayer
         // one-line layout: the title words sit in the number's text, smaller
         private string ValueText(int combo) =>
             Cfg.ComboLayout == 2
-                ? "<size=42%><color=#" + ColorUtility.ToHtmlStringRGB(TitleColor) + ">Combo  |  </color></size>" + combo
+                ? "<color=#" + ColorUtility.ToHtmlStringRGB(TitleColor) + ">Combo  |  </color>" + combo
                 : combo.ToString();
 
         // ---- milestone effect (100 / 500 / 1000 ... combo) ----

@@ -58,6 +58,7 @@ namespace NowOverlayer
         public float CropL, CropR, CropT, CropB; // webcam: share of the picture cut from each side (0..0.45), as seen on screen
         public bool FlipV;          // webcam: upside-down flip
         public int ComboLayout;     // combo: 0 title over number, 1 number over title, 2 one line "Combo | 257"
+        public float ComboGap;      // combo: px added between the title and the number (negative = closer)
         public string NumberColor = ""; // combo number: "" = red gradient that deepens with the combo (or the theme)
 
         public ElementConfig Clone()

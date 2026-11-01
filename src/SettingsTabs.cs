@@ -265,6 +265,19 @@ namespace NowOverlayer
                     changed = true;
                 }
                 GUILayout.Label(ComboLook(combo, layout), _comboPreview ?? (_comboPreview = new GUIStyle(Ui.H2) { alignment = TextAnchor.MiddleCenter, richText = true }));
+                if (layout != 2)
+                {
+                    float gap = Ui.Slider("제목과 숫자 간격", combo.ComboGap, -40f, 40f, "0");
+                    if (Mathf.Abs(gap - combo.ComboGap) > 0.5f)
+                    {
+                        foreach (ElementConfig c in Elements)
+                        {
+                            if (c.Type == ElementType.Combo) c.ComboGap = Mathf.Round(gap);
+                        }
+                        changed = true;
+                    }
+                    GUILayout.Label("왼쪽으로 끌면 Combo 글자와 숫자가 더 붙어요 · 0이 기본", Ui.Sub);
+                }
                 Ui.Divider();
                 GUILayout.Label("콤보 숫자 색", Ui.Body);
                 string nc = NumberColorPicker(combo.NumberColor);
@@ -319,7 +332,7 @@ namespace NowOverlayer
             string title = "<color=#" + (Theme.ColorsWords ? Main.Settings.ThemeColor : c.Color) + ">Combo</color>";
             string numHex = !string.IsNullOrEmpty(c.NumberColor) ? c.NumberColor : Theme.ColorsNumbers ? Main.Settings.ThemeColor : "FF6D6D";
             string num = "<color=#" + numHex + "><size=30>257</size></color>";
-            return layout == 0 ? title + "\n" + num : layout == 1 ? num + "\n" + title : title + "  |  " + num;
+            return layout == 0 ? title + "\n" + num : layout == 1 ? num + "\n" + title : title + "  |  <color=#" + numHex + ">257</color>";
         }
 
         // ---- fonts ----

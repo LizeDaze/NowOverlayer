@@ -1181,6 +1181,16 @@ namespace NowOverlayer
                     changed = true;
                 }
                 GUILayout.Label(Settings.ComboLook(c, layout), Ui.Body);
+                if (layout != 2)
+                {
+                    float gap = Ui.Slider("제목과 숫자 간격", c.ComboGap, -40f, 40f, "0");
+                    if (Mathf.Abs(gap - c.ComboGap) > 0.5f)
+                    {
+                        c.ComboGap = Mathf.Round(gap);
+                        changed = true;
+                    }
+                    GUILayout.Label("왼쪽으로 끌면 더 붙어요 · 0이 기본", Ui.Sub);
+                }
                 GUILayout.EndVertical();
             }
 
