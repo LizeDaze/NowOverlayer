@@ -125,6 +125,11 @@ namespace NowOverlayer
         public void SetFit(Rect? board, Texture snapshot)
         {
             float k = Canvas.scaleFactor;
+            if (board == null && snapshot)
+            {
+                // full-screen editing: the still covers the live game edge to edge
+                board = new Rect(0f, 0f, Screen.width, Screen.height);
+            }
             if (board == null)
             {
                 FitScale = 1f;

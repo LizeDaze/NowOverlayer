@@ -35,8 +35,9 @@ namespace NowOverlayer
             {
                 Main.LogError("Close UMM window failed", e);
             }
-            EditorScene.Enter(); // freeze the level, hide other mods' HUDs (before the screen grab)
-            // grab the game screen first (mod window closed, overlay hidden) for the fitted board's background
+            EditorScene.Enter(); // freeze the level, stop game input
+            // grab the game screen first (mod window closed, overlay hidden, other mods still on) as the still that
+            // covers the live game; the other mods' HUDs are hidden once it is up
             _opening = true;
             Overlay.Instance.StartCoroutine(Overlay.Instance.GrabScreen(tex =>
             {
@@ -45,6 +46,7 @@ namespace NowOverlayer
                 Active = true;
                 Overlay.Instance.MarkDirty();
                 foreach (ElementView v in Overlay.Instance.Views) (v as TextView)?.FitSize();
+                Overlay.Instance.StartCoroutine(EditorScene.HideModsLater());
             }));
         }
 
@@ -61,6 +63,7 @@ namespace NowOverlayer
         }
 
         private static bool _opening;
+        public static bool Opening => _opening;
         private static Texture2D _shot;
 
         private static void SetShot(Texture2D tex)
@@ -105,11 +108,13 @@ namespace NowOverlayer
             Active = false;
             Overlay.Instance.SetFit(null, null);
             _boardSet = null;
+            EditorScene.ShowMods(); // same still as on open: with the other mods on it
             Overlay.Instance.StartCoroutine(Overlay.Instance.GrabScreen(tex =>
             {
                 _opening = false;
                 SetShot(tex);
                 Active = true;
+                Overlay.Instance.StartCoroutine(EditorScene.HideModsLater());
             }));
         }
 

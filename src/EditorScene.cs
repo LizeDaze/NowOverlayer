@@ -7,11 +7,14 @@ using UnityModManagerNet;
 namespace NowOverlayer
 {
     // What the editor does to the game around it: the level in progress is frozen (same steps as the game's own
-    // pause, without its menu) and the other mods' HUDs are hidden, so only this overlay is on the board.
+    // pause, without its menu), the game reads no input at all, and the other mods' HUDs are hidden behind a still
+    // of the screen taken before they go, so only this overlay is on the board.
     public static class EditorScene
     {
+        // Open: freeze, then the editor grabs the screen (other mods still on it), then HideModsLater.
         public static void Enter()
         {
+            AsyncInputManager.ClearKeys();
             try
             {
                 Freeze();
@@ -20,6 +23,14 @@ namespace NowOverlayer
             {
                 Main.LogError("Pause for editor failed", e);
             }
+        }
+
+        // Runs once the still covers the screen, so the mods vanish behind it.
+        public static System.Collections.IEnumerator HideModsLater()
+        {
+            yield return null;
+            yield return null;
+            if (!OverlayEditor.Active) yield break;
             try
             {
                 HideMods();
@@ -33,6 +44,9 @@ namespace NowOverlayer
         public static void Leave()
         {
             ShowMods();
+            // keys pressed while editing would be replayed as hits; the closing key (Esc) is still down this frame
+            AsyncInputManager.ClearKeys();
+            _releaseFrame = Time.frameCount + 2;
             try
             {
                 Unfreeze();
@@ -42,6 +56,12 @@ namespace NowOverlayer
                 Main.LogError("Resume after editor failed", e);
             }
         }
+
+        // ---- input: the game takes nothing while the editor is open (Patches.EditorInput) ----
+
+        private static int _releaseFrame = -1;
+
+        public static bool Blocking => OverlayEditor.Active || OverlayEditor.Opening || Time.frameCount <= _releaseFrame;
 
         // ---- pause ----
 
@@ -99,7 +119,7 @@ namespace NowOverlayer
         private static readonly List<Canvas> HiddenCanvases = new List<Canvas>();
         private static readonly List<Behaviour> HiddenDrawers = new List<Behaviour>();
 
-        private static void HideMods()
+        public static void HideMods()
         {
             if (HiddenCanvases.Count > 0 || HiddenDrawers.Count > 0) return;
             var mods = new HashSet<Assembly>();
@@ -137,7 +157,7 @@ namespace NowOverlayer
                 Main.Log("Editor: hid " + HiddenCanvases.Count + " canvases, " + HiddenDrawers.Count + " GUI drawers of other mods");
         }
 
-        private static void ShowMods()
+        public static void ShowMods()
         {
             foreach (Canvas c in HiddenCanvases)
             {

@@ -28,6 +28,28 @@ namespace NowOverlayer
         private static IEnumerable<MethodBase> All(Type type, string name) =>
             AccessTools.GetDeclaredMethods(type).Where(m => m.Name == name);
 
+        // While the overlay editor is open the game reads no input: no hits (async key queue emptied, not
+        // replayed later), no Esc / shortcuts in the level or the level editor.
+        [HarmonyPatch]
+        private static class EditorInput
+        {
+            private static IEnumerable<MethodBase> TargetMethods() =>
+                All(typeof(scrController), "Update").Concat(All(typeof(scnEditor), "Update"));
+
+            private static bool Prefix() => !EditorScene.Blocking;
+        }
+
+        [HarmonyPatch(typeof(scrController), "UpdateInput")]
+        private static class EditorAsyncInput
+        {
+            private static bool Prefix()
+            {
+                if (!EditorScene.Blocking) return true;
+                AsyncInputManager.ClearKeys();
+                return false;
+            }
+        }
+
         [HarmonyPatch(typeof(scnGame), "Play")]
         private static class GameStart
         {
