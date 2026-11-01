@@ -774,8 +774,26 @@ namespace NowOverlayer
                     return;
                 }
             }
+            if (e.control && e.keyCode == KeyCode.V && _clip.Count > 0)
+            {
+                Checkpoint();
+                PasteClip();
+                e.Use();
+                return;
+            }
             List<ElementView> s = Selected();
             if (s.Count == 0) return;
+            if (e.control && (e.keyCode == KeyCode.C || e.keyCode == KeyCode.X))
+            {
+                CopySelected();
+                if (e.keyCode == KeyCode.X)
+                {
+                    Checkpoint();
+                    DeleteSelected();
+                }
+                e.Use();
+                return;
+            }
             if (e.keyCode != KeyCode.None) Checkpoint();
             float step = e.shift ? 10f : 1f;
             Vector2 move = Vector2.zero;
@@ -845,6 +863,33 @@ namespace NowOverlayer
                 ElementConfig c = v.Cfg.Clone();
                 c.X += 24f;
                 c.Y -= 24f;
+                copies.Add(Overlay.Instance.AddElement(c));
+            }
+            _multi.Clear();
+            _multi.AddRange(copies);
+            _sel = copies.Count > 0 ? copies[copies.Count - 1] : null;
+        }
+
+        // Ctrl+C / Ctrl+X keep copies of the selected items; each Ctrl+V drops them one step further down-right.
+        private readonly List<ElementConfig> _clip = new List<ElementConfig>();
+        private int _pastes;
+
+        private void CopySelected()
+        {
+            _clip.Clear();
+            foreach (ElementView v in Selected()) _clip.Add(v.Cfg.Clone());
+            _pastes = 0;
+        }
+
+        private void PasteClip()
+        {
+            _pastes++;
+            var copies = new List<ElementView>();
+            foreach (ElementConfig src in _clip)
+            {
+                ElementConfig c = src.Clone();
+                c.X += 24f * _pastes;
+                c.Y -= 24f * _pastes;
                 copies.Add(Overlay.Instance.AddElement(c));
             }
             _multi.Clear();

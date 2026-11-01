@@ -330,7 +330,7 @@ namespace NowOverlayer
             }
             text += "      화면 " + Screen.width + "×" + Screen.height + "  ·  배율 " + Main.Settings.Size.ToString("0.00");
             GUI.Label(r, text, _status);
-            GUI.Label(r, (_chromeHidden ? "<color=#FF8792>Tab 도구 다시 보기</color> · " : "Tab 모두 숨기기 · ") + "Ctrl+Z 실행 취소 · Ctrl+D 복제 · Del 삭제 · Shift 비율 유지 · Alt 가운데 기준 · Esc 끝", _statusRight);
+            GUI.Label(r, (_chromeHidden ? "<color=#FF8792>Tab 도구 다시 보기</color> · " : "Tab 모두 숨기기 · ") + "Ctrl+Z 실행 취소 · Ctrl+C/V 복사·붙여넣기 · Del 삭제 · Shift 비율 유지 · Alt 가운데 기준 · Esc 끝", _statusRight);
         }
 
         // ---- docked panels: properties (tabs) over layers ----
