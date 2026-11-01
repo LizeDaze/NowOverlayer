@@ -57,6 +57,7 @@ namespace NowOverlayer
         public int Rotation;        // webcam: 0, 90, 180, 270 (clockwise)
         public float CropL, CropR, CropT, CropB; // webcam: share of the picture cut from each side (0..0.45), as seen on screen
         public bool FlipV;          // webcam: upside-down flip
+        public int ComboLayout;     // combo: 0 title over number, 1 number over title, 2 one line "Combo | 257"
 
         public ElementConfig Clone()
         {

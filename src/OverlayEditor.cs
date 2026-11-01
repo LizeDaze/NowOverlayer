@@ -1117,6 +1117,19 @@ namespace NowOverlayer
                 GUILayout.EndVertical();
             }
 
+            if (c.Type == ElementType.Combo)
+            {
+                Ui.Section("콤보 모양");
+                int layout = c.ComboLayout;
+                if (Ui.Segmented(ref layout, "제목 위", "숫자 위", "한 줄"))
+                {
+                    c.ComboLayout = layout;
+                    changed = true;
+                }
+                GUILayout.Label(Settings.ComboLook(c.Color, layout), Ui.Body);
+                GUILayout.EndVertical();
+            }
+
             if (c.Type == ElementType.CustomText)
             {
                 Ui.Section("내용");

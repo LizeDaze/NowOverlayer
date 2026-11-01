@@ -189,6 +189,101 @@ namespace NowOverlayer
             return s < 5 ? "방금" : s < 60 ? (int)s + "초 전" : (int)(s / 60) + "분 전";
         }
 
+        // ---- color theme · combo layout ----
+
+        private static readonly string[] ThemeSwatches =
+            { "FF4757", "FF6D6D", "FFDA45", "FF9F43", "60FF4E", "4FC3FF", "3182F6", "D958FF", "FF7EB6", "FFFFFF" };
+
+        private static readonly string[] ComboLayoutNames = { "제목 위 · 숫자 아래", "숫자 위 · 제목 아래", "한 줄 (Combo | 257)" };
+
+        private static GUIStyle _comboPreview;
+
+        private bool DrawTheme()
+        {
+            bool changed = false;
+            Ui.Section("색 테마");
+            GUILayout.Label("고른 색을 오버레이에 한 번에 입혀요. 어디에 입힐지 먼저 골라 주세요.", Ui.Sub);
+            int mode = ThemeMode;
+            if (Ui.Segmented(ref mode, Theme.ModeNames))
+            {
+                ThemeMode = mode;
+                changed = true;
+            }
+            GUILayout.Label(Theme.ModeSubs[ThemeMode], Ui.Sub);
+            if (ThemeMode != Theme.Off)
+            {
+                Ui.Divider();
+                GUILayout.Label("테마 색", Ui.Body);
+                Ui.FlowBegin();
+                foreach (string hex in ThemeSwatches)
+                {
+                    Ui.FlowItem(32f);
+                    if (Ui.ColorSwatch(Ui.Hex(hex), string.Equals(hex, ThemeColor, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        ThemeColor = hex;
+                        changed = true;
+                    }
+                }
+                Ui.FlowEnd();
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("직접 입력  #", Ui.Sub, GUILayout.Width(80));
+                string hexIn = GUILayout.TextField(ThemeColor ?? "", 6, Ui.Field, GUILayout.Width(110));
+                GUILayout.EndHorizontal();
+                if (hexIn != ThemeColor && hexIn.Length == 6 && ColorUtility.TryParseHtmlString("#" + hexIn, out _))
+                {
+                    ThemeColor = hexIn.ToUpperInvariant();
+                    changed = true;
+                }
+            }
+            Ui.Divider();
+            GUILayout.Label("미리보기", Ui.Sub);
+            Snapshot sample = Snapshot.Sample();
+            foreach (ElementType t in new[] { ElementType.Progress, ElementType.XAccuracy, ElementType.TileInfo })
+            {
+                var cfg = new ElementConfig { Type = t };
+                GUILayout.Label(Theme.Apply(sample.Text(cfg), cfg.Color), Ui.H2);
+            }
+            GUILayout.Label("판정 개수는 판정마다 정해진 색 그대로 보여요.", Ui.Sub);
+            GUILayout.EndVertical();
+
+            Ui.Section("콤보 모양");
+            GUILayout.Label("콤보 글자와 숫자를 어떻게 놓을지 골라요. 화면에 있는 모든 콤보에 적용돼요. 하나만 바꾸려면 화면 편집에서 콤보를 눌러요.", Ui.Sub);
+            ElementConfig combo = Elements.Find(c => c.Type == ElementType.Combo);
+            if (combo == null)
+            {
+                GUILayout.Label("콤보 항목이 없어요. [화면 편집] → + 에서 추가할 수 있어요.", Ui.Sub);
+            }
+            else
+            {
+                int layout = combo.ComboLayout;
+                if (Ui.Segmented(ref layout, ComboLayoutNames))
+                {
+                    foreach (ElementConfig c in Elements)
+                    {
+                        if (c.Type == ElementType.Combo) c.ComboLayout = layout;
+                    }
+                    changed = true;
+                }
+                GUILayout.Label(ComboLook(combo.Color, layout), _comboPreview ?? (_comboPreview = new GUIStyle(Ui.H2) { alignment = TextAnchor.MiddleCenter, richText = true }));
+            }
+            GUILayout.EndVertical();
+
+            if (changed)
+            {
+                Save(Main.Mod);
+                Overlay.Instance?.ShowPreview(4f);
+            }
+            return changed;
+        }
+
+        // small rich-text picture of a combo layout for the pickers
+        internal static string ComboLook(string titleHex, int layout)
+        {
+            string title = "<color=#" + (Theme.ColorsWords ? Main.Settings.ThemeColor : titleHex) + ">Combo</color>";
+            string num = "<color=#" + (Theme.ColorsNumbers ? Main.Settings.ThemeColor : "FF6D6D") + "><size=30>257</size></color>";
+            return layout == 0 ? title + "\n" + num : layout == 1 ? num + "\n" + title : title + "  |  " + num;
+        }
+
         // ---- fonts ----
 
         private static string _fontSearch = "";
@@ -260,12 +355,36 @@ namespace NowOverlayer
 
         private static string _fontPathInput = "";
 
-        private void DrawFonts()
+        private bool DrawFonts()
         {
-            Ui.Section("오버레이 글꼴");
+            bool changed = false;
+            Ui.Section("전체 글꼴");
             string current = string.IsNullOrEmpty(FontPath) ? "기본 · Maplestory Bold" : Path.GetFileNameWithoutExtension(FontPath);
-            GUILayout.Label("지금: " + current, Ui.Body);
-            GUILayout.Label("고르면 게임 화면에 바로 적용돼서 미리 볼 수 있어요. 글꼴에 없는 글자는 게임 기본 글꼴로 나와요.", Ui.Sub);
+            GUILayout.Label("지금: " + current, Ui.H2);
+            GUILayout.Label("아래 목록에서 고르면 게임 화면에 바로 적용돼서 미리 볼 수 있어요. 글꼴에 없는 글자는 게임 기본 글꼴로 나와요.", Ui.Sub);
+            bool all = Ui.Switch("고를 때 모든 항목에 적용", FontAll, "화면 편집에서 글꼴을 따로 정한 항목까지 이 글꼴로 바꿔요");
+            if (all != FontAll)
+            {
+                FontAll = all;
+                Save(Main.Mod);
+            }
+            var own = new List<string>();
+            foreach (ElementConfig c in Elements)
+            {
+                if (!string.IsNullOrEmpty(c.Font)) own.Add(ElementConfig.DisplayName(c.Type) + " (" + Path.GetFileNameWithoutExtension(c.Font) + ")");
+            }
+            if (own.Count > 0)
+            {
+                GUILayout.Label("따로 정한 글꼴을 쓰는 항목: " + string.Join(", ", own.ToArray()), Ui.Sub);
+                if (GUILayout.Button("이 항목들도 전체 글꼴로 맞추기", Ui.Secondary))
+                {
+                    foreach (ElementConfig c in Elements) c.Font = "";
+                    changed = true;
+                    Save(Main.Mod);
+                    Overlay.Instance?.ShowPreview(4f);
+                    Overlay.Instance?.ShowToast("모든 항목 · " + current);
+                }
+            }
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("기본으로", Ui.Ghost)) PickFont("");
             if (GUILayout.Button("Font 폴더 열기", Ui.Ghost))
@@ -309,12 +428,17 @@ namespace NowOverlayer
             if (shown > 40) GUILayout.Label("40개까지만 보여요. 검색어로 좁혀 주세요.", Ui.Sub);
             if (shown == 0) GUILayout.Label("찾는 글꼴이 없어요.", Ui.Sub);
             GUILayout.EndVertical();
+            return changed;
         }
 
         private void PickFont(string path)
         {
             Overlay o = Overlay.Instance;
             if (!o) return;
+            if (FontAll)
+            {
+                foreach (ElementConfig c in Elements) c.Font = "";
+            }
             if (o.SetFont(path))
             {
                 _fontError = null;

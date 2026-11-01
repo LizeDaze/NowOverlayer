@@ -108,7 +108,8 @@ namespace NowOverlayer
         {
             ApplyFont(_text, Cfg.Font);
             _text.fontSize = Cfg.FontSize;
-            _text.color = Snapshot.Hex(Cfg.Color);
+            // a theme writes every run's color into the text itself
+            _text.color = Theme.Mode != Theme.Off && !Theme.Skips(Cfg) ? Color.white : Snapshot.Hex(Cfg.Color);
             _text.lineSpacing = Cfg.Type == ElementType.Bpm ? 30f : 0f;
             int h = Cfg.PivotX < 0.25f ? 0 : Cfg.PivotX > 0.75f ? 2 : 1;
             int v = Cfg.PivotY > 0.75f ? 0 : Cfg.PivotY < 0.25f ? 2 : 1;
@@ -131,6 +132,7 @@ namespace NowOverlayer
         public override void Render(Snapshot s)
         {
             string text = s.Text(Cfg);
+            if (!Theme.Skips(Cfg)) text = Theme.Apply(text, Cfg.Color);
             if (text == _last) return;
             _last = text;
             _text.text = text;
@@ -153,6 +155,7 @@ namespace NowOverlayer
     public class BarView : ElementView
     {
         private readonly RectTransform _fill, _best;
+        private readonly Image _fillImage;
 
         public BarView(ElementConfig cfg, Transform parent)
         {
@@ -170,6 +173,7 @@ namespace NowOverlayer
             Image fill = _fill.gameObject.AddComponent<Image>();
             fill.color = Snapshot.Hex("E44343");
             fill.raycastTarget = false;
+            _fillImage = fill;
 
             // Thin tick at the best progress from this start position.
             _best = NewRect("Best", Root);
@@ -182,7 +186,11 @@ namespace NowOverlayer
             best.raycastTarget = false;
         }
 
-        protected override void ApplyStyle() => Root.sizeDelta = new Vector2(Cfg.Width, Cfg.Height);
+        protected override void ApplyStyle()
+        {
+            Root.sizeDelta = new Vector2(Cfg.Width, Cfg.Height);
+            _fillImage.color = Theme.Mode == Theme.All ? Theme.Color : Snapshot.Hex("E44343");
+        }
 
         public override void Render(Snapshot s)
         {
@@ -197,6 +205,7 @@ namespace NowOverlayer
         private const float BumpTime = 0.15f;
         private const float TitleY = 62f; // was 70; gap to the number tightened
         private readonly TextMeshProUGUI _title, _value;
+        private readonly RectTransform _titleRt, _valueRt;
         private int _last = -1;
         private float _bumpT = BumpTime;
 
@@ -206,14 +215,14 @@ namespace NowOverlayer
             Root = NewRect("Combo", parent);
             Root.sizeDelta = new Vector2(300f, 170f);
 
-            RectTransform title = NewRect("Title", Root);
+            RectTransform title = _titleRt = NewRect("Title", Root);
             title.anchoredPosition = new Vector2(0f, TitleY);
             title.sizeDelta = new Vector2(300f, 40f);
             _title = NewText(title, o, 34f);
             _title.alignment = TextAlignmentOptions.Center;
             _title.text = "Combo";
 
-            RectTransform value = NewRect("Value", Root);
+            RectTransform value = _valueRt = NewRect("Value", Root);
             value.anchoredPosition = new Vector2(0f, -5f);
             value.sizeDelta = new Vector2(300f, 110f);
             _value = NewText(value, o, 108f);
@@ -224,9 +233,24 @@ namespace NowOverlayer
         {
             ApplyFont(_title, Cfg.Font);
             ApplyFont(_value, Cfg.Font);
-            _title.color = Snapshot.Hex(Cfg.Color);
+            _title.color = TitleColor;
+            // ElementConfig.ComboLayout: 0 title over the number, 1 number over the title, 2 one line "Combo | 257"
+            int layout = Cfg.ComboLayout;
+            _title.gameObject.SetActive(layout != 2);
+            _titleRt.anchoredPosition = new Vector2(0f, layout == 1 ? -TitleY : TitleY);
+            _valueRt.anchoredPosition = new Vector2(0f, layout == 1 ? 5f : -5f);
+            _valueRt.sizeDelta = new Vector2(layout == 2 ? 560f : 300f, 110f);
+            Root.sizeDelta = layout == 2 ? new Vector2(560f, 120f) : new Vector2(300f, 170f);
             _last = -1;
         }
+
+        private Color TitleColor => Theme.ColorsWords ? Theme.Color : Snapshot.Hex(Cfg.Color);
+
+        // one-line layout: the title words sit in the number's text, smaller
+        private string ValueText(int combo) =>
+            Cfg.ComboLayout == 2
+                ? "<size=42%><color=#" + ColorUtility.ToHtmlStringRGB(TitleColor) + ">Combo  |  </color></size>" + combo
+                : combo.ToString();
 
         // ---- milestone effect (100 / 500 / 1000 ... combo) ----
 
@@ -265,10 +289,10 @@ namespace NowOverlayer
             bool up = s.Combo > _last && _last >= 0;
             if (up) _bumpT = 0f;
             _last = s.Combo;
-            _value.text = s.Combo.ToString();
+            _value.text = ValueText(s.Combo);
             float t = Mathf.Clamp01(s.Combo / 1000f);
             t = t >= 1f ? 1f : 1f - Mathf.Pow(2f, -10f * t);
-            _baseColor = Color.Lerp(Snapshot.Hex("FF6D6D"), Snapshot.Hex("DA3636"), t);
+            _baseColor = Theme.ColorsNumbers ? Theme.Color : Color.Lerp(Snapshot.Hex("FF6D6D"), Snapshot.Hex("DA3636"), t);
             _value.color = _baseColor;
             if (up && IsMilestone(s.Combo, Main.Settings)) PlayMilestone(s.Combo);
         }
@@ -303,11 +327,11 @@ namespace NowOverlayer
                 float rs = Mathf.Lerp(0.6f, 2.6f, 1f - Mathf.Pow(1f - m, 3f));
                 ring.rectTransform.localScale = new Vector3(rs, rs, 1f);
                 ring.color = new Color(gold.r, gold.g, gold.b, 0.9f * (1f - m));
-                _title.color = Color.Lerp(gold, Snapshot.Hex(Cfg.Color), Mathf.Clamp01((m - 0.6f) / 0.4f));
+                _title.color = Color.Lerp(gold, TitleColor, Mathf.Clamp01((m - 0.6f) / 0.4f));
                 if (_mileT >= MilestoneTime)
                 {
                     _title.text = "Combo";
-                    _title.color = Snapshot.Hex(Cfg.Color);
+                    _title.color = TitleColor;
                     _value.color = _baseColor;
                     ring.color = new Color(1f, 1f, 1f, 0f);
                 }

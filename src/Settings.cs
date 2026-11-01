@@ -32,6 +32,11 @@ namespace NowOverlayer
 
         public string FontPath = "";
 
+        public int ThemeMode;               // Theme.Off / Numbers / Words / All
+        public string ThemeColor = "FF4757";
+        public bool GuideDismissed;
+        public bool FontAll = true;         // picking an overlay font also clears every item's own font         // the "처음이라면" card on the 일반 page
+
         public List<Preset> Presets = new List<Preset>();
         public string ActivePreset = "";
 
@@ -132,7 +137,7 @@ namespace NowOverlayer
             GUILayout.Label("v" + Main.Mod.Info.Version, _verStyle ?? (_verStyle = new GUIStyle(Ui.Sub) { margin = new RectOffset(6, 0, 0, 0) }));
             GUILayout.Space(18);
             Ui.RailNav(ref _tab, TabNames);
-            if (_tab != 5)
+            if (_tab != 6)
             {
                 _capture = -1;
                 Hotkeys.Capturing = false;
@@ -151,12 +156,13 @@ namespace NowOverlayer
             switch (_tab)
             {
                 case 0: changed |= DrawGeneral(); break;
-                case 1: changed |= DrawAnimation(Mathf.Clamp((int)((Ui.FlowWidth + 8f) / 176f), 1, 3), 168f); break;
-                case 2: changed |= DrawEffects(); break;
-                case 3: DrawFonts(); break;
-                case 4: DrawPresets(); break;
-                case 5: changed |= DrawHotkeys(); break;
-                case 6: changed |= DrawObs(); break;
+                case 1: changed |= DrawTheme(); break;
+                case 2: changed |= DrawFonts(); break;
+                case 3: changed |= DrawAnimation(Mathf.Clamp((int)((Ui.FlowWidth + 8f) / 176f), 1, 3), 168f); break;
+                case 4: changed |= DrawEffects(); break;
+                case 5: DrawPresets(); break;
+                case 6: changed |= DrawHotkeys(); break;
+                case 7: changed |= DrawObs(); break;
             }
 
             GUILayout.EndVertical();
@@ -167,17 +173,18 @@ namespace NowOverlayer
             if (changed) Overlay.Instance?.ApplySettings();
         }
 
-        private static readonly string[] TabNames = { "일반", "애니메이션", "효과", "글꼴", "프리셋", "단축키", "연동" };
+        private static readonly string[] TabNames = { "일반", "색 테마", "글꼴", "애니메이션", "효과", "프리셋", "단축키", "연동" };
 
         private static readonly string[] TabSubs =
         {
-            "보이는 항목, 전체 배율, 게임 기본 제목 숨기기",
-            "플레이를 시작할 때 오버레이가 나타나는 모습",
-            "콤보 마일스톤 · 결과 카드 · 자동 캡처",
-            "오버레이 글자에 쓸 글꼴",
-            "배치를 저장해 두고 단축키로 바로 바꾸기",
-            "키 조합을 눌러서 바꾸기",
-            "디스코드 상태 · OBS 장면 전환과 녹화"
+            "무엇을 화면에 띄울지 켜고 끄는 곳이에요",
+            "오버레이 전체 색을 한 번에 바꾸고, 콤보 모양을 골라요",
+            "오버레이의 모든 글자를 한 글꼴로 바꿔요",
+            "레벨을 시작할 때 오버레이가 나타나는 모습이에요",
+            "콤보 축하 효과 · 결과 화면 · 자동 캡처",
+            "지금 배치를 저장해 두고 언제든 다시 불러와요",
+            "자주 쓰는 기능을 키 하나로 실행해요",
+            "디스코드 상태 표시 · OBS 장면 전환과 녹화"
         };
 
         private static GUIStyle _verStyle, _hintStyle, _contentStyle;
@@ -200,12 +207,33 @@ namespace NowOverlayer
         private bool DrawGeneral()
         {
             bool changed = false;
+            if (!GuideDismissed)
+            {
+                Ui.Section("처음이라면 이렇게 해 보세요");
+                GUILayout.Label("1.  아래 [표시 항목]에서 화면에 띄울 것만 켜요.", Ui.Body);
+                GUILayout.Label("2.  왼쪽 아래 [화면 편집]을 누르면 게임이 멈추고, 항목을 끌어서 옮기거나 크기를 바꿀 수 있어요. Esc로 나와요.", Ui.Body);
+                GUILayout.Label("3.  [색 테마]에서 색을, [글꼴]에서 글꼴을 한 번에 바꿔요.", Ui.Body);
+                GUILayout.Label("4.  마음에 들면 [프리셋]에 저장해 두세요. 언제든 되돌릴 수 있어요.", Ui.Body);
+                GUILayout.Space(6);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("화면 편집 열기", Ui.Primary, GUILayout.Height(36))) OverlayEditor.Open();
+                if (GUILayout.Button("색 테마로 가기", Ui.Secondary, GUILayout.Height(36))) _tab = 1;
+                if (GUILayout.Button("알겠어요, 닫기", Ui.Ghost, GUILayout.Height(36)))
+                {
+                    GuideDismissed = true;
+                    Save(Main.Mod);
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.EndVertical();
+            }
+
             Ui.Section("표시 항목");
-            GUILayout.Label("위치·색·크기는 위의 [화면 편집]에서 바꿔요.", Ui.Sub);
+            GUILayout.Label("켜 둔 항목만 플레이 중에 보여요. 위치 · 색 · 크기는 [화면 편집]에서 바꿔요.", Ui.Sub);
             GUILayout.Space(4);
             foreach (ElementConfig c in Elements)
             {
-                string sub = c.Type == ElementType.CustomText ? c.Template : c.Type == ElementType.Web ? c.Url : null;
+                string sub = c.Type == ElementType.CustomText ? c.Template : c.Type == ElementType.Web ? c.Url : ElementConfig.Description(c.Type);
+                if (sub == ElementConfig.DisplayName(c.Type)) sub = null;
                 bool on = Ui.Switch(ElementConfig.DisplayName(c.Type), c.Visible, sub);
                 if (on != c.Visible)
                 {
@@ -242,6 +270,7 @@ namespace NowOverlayer
             GUILayout.EndVertical();
 
             Ui.Section("업데이트");
+            if (GuideDismissed && GUILayout.Button("처음 안내 다시 보기", Ui.Ghost)) GuideDismissed = false;
             bool auto = Ui.Switch("자동 업데이트", AutoUpdate, "게임을 켤 때 새 버전을 받아 두고, 다음에 켤 때 적용돼요");
             if (auto != AutoUpdate)
             {
