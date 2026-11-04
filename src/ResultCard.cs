@@ -10,7 +10,7 @@ namespace NowOverlayer
 {
     // Rhythm-game style result screen on clear / death.
     // Left: a rank letter (X / SS / S+ / S / A / B / C / D, F on death) stamped onto a slanted color band, with the
-    // clear type under it (ALL XPERFECT / FULL PERFECT / CLEAR / FAILED). Right: song, a counting-up X-Accuracy
+    // clear type under it (ALL XPERFECT / PURE PERFECT / CLEAR / FAILED, Korean when the game is in Korean). Right: song, a counting-up X-Accuracy
     // (progress on death), small stats, a progress bar and a 10-row judgement table where XPerfect has its own row.
     // Numbers use Bahnschrift (a narrow DIN-like face that ships with Windows), text uses Malgun Gothic.
     public class ResultCard
@@ -312,12 +312,14 @@ namespace NowOverlayer
             public Color Top, Bottom;
         }
 
+        private static bool Korean => RDString.language == SystemLanguage.Korean;
+
         private static Grade Rank(Data d, int[] c)
         {
-            if (!d.Cleared) return new Grade { Letter = "F", Type = "FAILED", Top = Snapshot.Hex("FF6B78"), Bottom = Snapshot.Hex("C21F3A") };
+            if (!d.Cleared) return new Grade { Letter = "F", Type = Korean ? "실패" : "FAILED", Top = Snapshot.Hex("FF6B78"), Bottom = Snapshot.Hex("C21F3A") };
             bool allX = c[1] + c[2] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9] == 0;
             bool fullPerfect = c[4] + c[5] + c[6] + c[7] + c[8] + c[9] == 0;
-            string type = allX ? "ALL XPERFECT" : fullPerfect ? "FULL PERFECT" : "CLEAR";
+            string type = allX ? "ALL XPERFECT" : fullPerfect ? (Korean ? "완벽한 플레이" : "PURE PERFECT") : (Korean ? "클리어" : "CLEAR");
             float x = d.XAcc * 100f;
             if (allX) return new Grade { Letter = "X", Type = type, Top = Color.white, Bottom = Snapshot.Hex("6FE9FF") };
             if (x >= 99.5f) return new Grade { Letter = "SS", Type = type, Top = Snapshot.Hex("FFF3B0"), Bottom = Snapshot.Hex("FFB300") };
@@ -371,7 +373,7 @@ namespace NowOverlayer
 
             _chip.color = new Color(_accent.r, _accent.g, _accent.b, 0.18f);
             _chipText.color = Color.Lerp(g.Top, g.Bottom, 0.1f);
-            _chipText.text = d.Cleared ? "STAGE CLEAR" : "STAGE FAILED";
+            _chipText.text = Korean ? (d.Cleared ? "레벨 클리어" : "레벨 실패") : (d.Cleared ? "LEVEL CLEAR" : "LEVEL FAILED");
             _chip.rectTransform.sizeDelta = new Vector2(_chipText.GetPreferredValues(_chipText.text).x + 32f, 34f);
 
             var badges = new List<string>();
