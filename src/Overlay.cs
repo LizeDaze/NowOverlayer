@@ -92,7 +92,7 @@ namespace NowOverlayer
         private void BuildChrome()
         {
             if (_toast != null) Destroy(transform.Find("Toast").gameObject);
-            if (_result != null) Destroy(transform.Find("Result").gameObject);
+            _result?.Destroy();
             _result = new ResultCard(transform, this);
             _toast = new Toast(transform, this);
         }
@@ -514,6 +514,8 @@ namespace NowOverlayer
         }
 
         // The clear card stands in for the game's result text (see Patches.GameResultText / GameCongrats).
+        private const float ClearCardDelay = 3f;
+
         public bool ReplacesGameResult => _shown && Main.Settings.ResultOnClear && Main.Settings.ReplaceGameResult;
 
         public void Clear()
@@ -528,8 +530,9 @@ namespace NowOverlayer
                 d.NewBestXAcc = r.NewBestXAcc;
                 d.MapBestXAcc = Stats.Get(_hash)?.BestXAcc ?? -1f;
             }
-            if (Main.Settings.ResultOnClear && d != null) _result.Show(d, Main.Settings.ReplaceGameResult ? 0f : Main.Settings.ResultSeconds);
-            if (d != null) Capture.Schedule(true, d.FirstClear || d.NewBestXAcc || d.NewBestProgress, d.Title);
+            bool late = Main.Settings.ResultOnClear && Main.Settings.ReplaceGameResult;
+            if (Main.Settings.ResultOnClear && d != null) _result.Show(d, late ? 0f : Main.Settings.ResultSeconds, late ? ClearCardDelay : 0f);
+            if (d != null) Capture.Schedule(true, d.FirstClear || d.NewBestXAcc || d.NewBestProgress, d.Title, late ? ClearCardDelay + 0.7f : 0f);
             Obs.Fire(Main.Settings.ObsOnClear);
         }
 

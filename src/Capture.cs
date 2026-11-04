@@ -23,14 +23,14 @@ namespace NowOverlayer
 
         public static string Folder => string.IsNullOrEmpty(Main.Settings.CaptureFolder) ? DefaultFolder : Main.Settings.CaptureFolder;
 
-        public static void Schedule(bool cleared, bool newRecord, string title)
+        public static void Schedule(bool cleared, bool newRecord, string title, float extraDelay = 0f)
         {
             Settings s = Main.Settings;
             if (cleared ? !s.CaptureOnClear : !s.CaptureOnDeath) return;
             if (s.CaptureOnlyRecords && !newRecord) return;
             string name = DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_" + Safe(title) + (cleared ? "_CLEAR" : "_FAIL") + ".png";
             _pending = Path.Combine(Folder, name);
-            _at = Time.unscaledTime + s.CaptureDelay;
+            _at = Time.unscaledTime + s.CaptureDelay + extraDelay;
         }
 
         public static void Tick()

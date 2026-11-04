@@ -8,10 +8,11 @@ using UnityEngine.UI;
 
 namespace NowOverlayer
 {
-    // Rhythm-game style result screen on clear / death.
-    // Left: a rank letter (X / SS / S+ / S / A / B / C / D, F on death) stamped onto a slanted color band, with the
-    // clear type under it (ALL XPERFECT / PURE PERFECT / CLEAR / FAILED, Korean when the game is in Korean). Right: song, a counting-up X-Accuracy
-    // (progress on death), small stats, a progress bar and a 10-row judgement table where XPerfect has its own row.
+    // Rhythm-game style result screen. On clear: a card with a rank letter (X / SS / S+ / S / A / B / C / D) stamped onto
+    // a slanted color band and the clear type under it (ALL XPERFECT / PURE PERFECT / CLEAR, Korean when the game is in
+    // Korean). Right: song, a counting-up X-Accuracy, small stats, a progress bar and a 10-row judgement table where
+    // XPerfect has its own row. With Settings.ReplaceGameResult it fills the screen a few seconds after the clear.
+    // On death: MiniCard, a small version that flies to the right edge.
     // Numbers use Bahnschrift (a narrow DIN-like face that ships with Windows), text uses Malgun Gothic.
     public class ResultCard
     {
@@ -30,6 +31,7 @@ namespace NowOverlayer
         private const float EmptyRowAlpha = 0.6f, BarH = 4f, TrackH = 6f;
         private static readonly Color Dim = new Color(0.78f, 0.78f, 0.84f);
         private static readonly Color BodyColor = new Color(0.035f, 0.035f, 0.05f);
+        private static readonly Color BodyOpaque = new Color(BodyColor.r, BodyColor.g, BodyColor.b, 0.985f);
 
         private static TMP_FontAsset _num, _bold, _regular;
         private static Material _glowMat;
@@ -41,7 +43,8 @@ namespace NowOverlayer
             _heroLabel, _hero, _statLabels, _statValues, _progressLabel;
         private readonly Row[] _rows = new Row[10];
         private readonly Canvas _canvas;
-        private readonly Image _dim, _shadow, _border;
+        private readonly Image _dim, _shadow, _border, _body, _flash;
+        private readonly MiniCard _mini;
         private bool _full; // clear card taking over from the game's own result text (Settings.ReplaceGameResult)
 
         private class Row
@@ -69,6 +72,7 @@ namespace NowOverlayer
         public ResultCard(Transform parent, Overlay o)
         {
             LoadFonts(o);
+            _mini = new MiniCard(parent);
             _root = ElementView.NewRect("Result", parent);
             _root.anchorMin = _root.anchorMax = new Vector2(0.5f, 0.5f);
             _root.sizeDelta = new Vector2(W, H);
@@ -79,7 +83,7 @@ namespace NowOverlayer
             _dim = Box(_root, "Dim", Vector2.zero, new Vector2(8000f, 8000f), new Color(0f, 0f, 0f, 0.55f), 1f);
             _shadow = Box(_root, "Shadow", new Vector2(0f, -14f), new Vector2(W + 50f, H + 50f), new Color(0f, 0f, 0f, 0.45f), 0.6f);
             _border = Box(_root, "Border", Vector2.zero, new Vector2(W + 2f, H + 2f), new Color(1f, 1f, 1f, 0.10f), 1.2f);
-            Box(_root, "Body", Vector2.zero, new Vector2(W, H), new Color(BodyColor.r, BodyColor.g, BodyColor.b, 0.985f), 1.2f);
+            _body = Box(_root, "Body", Vector2.zero, new Vector2(W, H), BodyOpaque, 1.2f);
             _topLine = Box(_root, "TopLine", Vector2.zero, new Vector2(W - 60f, 3f), Color.white, 10f);
             Place(_topLine.rectTransform, 0f, H / 2f - 1f, 0.5f, 1f);
 
@@ -202,6 +206,8 @@ namespace NowOverlayer
                 _rows[i] = row;
             }
 
+            _flash = Box(_root, "Flash", Vector2.zero, new Vector2(8000f, 8000f), new Color(1f, 1f, 1f, 0f), 1f);
+
             _root.gameObject.SetActive(false);
         }
 
@@ -320,7 +326,6 @@ namespace NowOverlayer
 
         private static Grade Rank(Data d, int[] c)
         {
-            if (!d.Cleared) return new Grade { Letter = "F", Type = Korean ? "실패" : "FAILED", Top = Snapshot.Hex("FF6B78"), Bottom = Snapshot.Hex("C21F3A") };
             bool allX = c[1] + c[2] + c[3] + c[4] + c[5] + c[6] + c[7] + c[8] + c[9] == 0;
             bool fullPerfect = c[4] + c[5] + c[6] + c[7] + c[8] + c[9] == 0;
             string type = allX ? "ALL XPERFECT" : fullPerfect ? (Korean ? "완벽한 플레이" : "PURE PERFECT") : (Korean ? "클리어" : "CLEAR");
@@ -337,27 +342,43 @@ namespace NowOverlayer
 
         // ---- show / animate ----
 
-        public void Show(Data d, float seconds)
+        private static int[] Counts(int[] h) => new[]
         {
+            Judge.Get(h, Judge.XPerfect) + Judge.Get(h, Judge.Auto),
+            Judge.Get(h, Judge.PerfectMinus) + Judge.Get(h, Judge.PerfectPlus) + Judge.Get(h, Judge.Perfect), // older game: one Perfect
+            Judge.Get(h, Judge.EarlyPerfect),
+            Judge.Get(h, Judge.LatePerfect),
+            Judge.Get(h, Judge.FailOverload),
+            Judge.Get(h, Judge.VeryEarly),
+            Judge.Get(h, Judge.VeryLate),
+            Judge.Get(h, Judge.TooEarly),
+            Judge.Get(h, Judge.TooLate),
+            Judge.Get(h, Judge.FailMiss)
+        };
+
+        private static string SongTitle(string title)
+        {
+            title = title ?? "";
+            int dash = title.IndexOf(" - ", StringComparison.Ordinal);
+            return dash > 0 ? title.Substring(dash + 3) : (title.Length > 0 ? title : "A Dance of Fire and Ice");
+        }
+
+        // delay: seconds before the card starts to appear
+        public void Show(Data d, float seconds, float delay = 0f)
+        {
+            Hide();
+            if (!d.Cleared)
+            {
+                _mini.Show(d, seconds);
+                return;
+            }
             _d = d;
-            _full = d.Cleared && Main.Settings.ReplaceGameResult;
-            _dim.color = _full ? BodyColor : new Color(0f, 0f, 0f, 0.55f);
+            _full = Main.Settings.ReplaceGameResult;
+            _dim.color = _full ? new Color(BodyColor.r, BodyColor.g, BodyColor.b, Main.Settings.ResultBgAlpha) : new Color(0f, 0f, 0f, 0.55f);
+            _body.color = _full ? Color.clear : BodyOpaque;
             _shadow.gameObject.SetActive(!_full);
             _border.gameObject.SetActive(!_full);
-            int[] h = d.Hits;
-            int[] counts =
-            {
-                Judge.Get(h, Judge.XPerfect) + Judge.Get(h, Judge.Auto),
-                Judge.Get(h, Judge.PerfectMinus) + Judge.Get(h, Judge.PerfectPlus) + Judge.Get(h, Judge.Perfect), // older game: one Perfect
-                Judge.Get(h, Judge.EarlyPerfect),
-                Judge.Get(h, Judge.LatePerfect),
-                Judge.Get(h, Judge.FailOverload),
-                Judge.Get(h, Judge.VeryEarly),
-                Judge.Get(h, Judge.VeryLate),
-                Judge.Get(h, Judge.TooEarly),
-                Judge.Get(h, Judge.TooLate),
-                Judge.Get(h, Judge.FailMiss)
-            };
+            int[] counts = Counts(d.Hits);
             int total = 0, most = 1;
             foreach (int c in counts)
             {
@@ -381,7 +402,7 @@ namespace NowOverlayer
 
             _chip.color = new Color(_accent.r, _accent.g, _accent.b, 0.18f);
             _chipText.color = Color.Lerp(g.Top, g.Bottom, 0.1f);
-            _chipText.text = Korean ? (d.Cleared ? "레벨 클리어" : "레벨 실패") : (d.Cleared ? "LEVEL CLEAR" : "LEVEL FAILED");
+            _chipText.text = Korean ? "레벨 클리어" : "LEVEL CLEAR";
             _chip.rectTransform.sizeDelta = new Vector2(_chipText.GetPreferredValues(_chipText.text).x + 32f, 34f);
 
             var badges = new List<string>();
@@ -392,22 +413,20 @@ namespace NowOverlayer
 
             string title = d.Title ?? "";
             int dash = title.IndexOf(" - ", StringComparison.Ordinal);
-            _title.text = dash > 0 ? title.Substring(dash + 3) : (title.Length > 0 ? title : "A Dance of Fire and Ice");
+            _title.text = SongTitle(title);
             _artist.text = dash > 0 ? title.Substring(0, dash) : "";
 
-            _heroLabel.text = d.Cleared ? "X-ACCURACY" : "PROGRESS";
-            _heroTarget = d.Cleared ? d.XAcc : d.Progress;
+            _heroLabel.text = "X-ACCURACY";
+            _heroTarget = d.XAcc;
             _barTarget = Mathf.Clamp01(d.Progress);
             _barFill.color = _accent;
             float trackW = TrackW;
             _barBest.gameObject.SetActive(d.Best > 0f && d.Best < 1f);
             _barBest.rectTransform.anchoredPosition = new Vector2(trackW * Mathf.Clamp01(d.Best), 0f);
-            _progressLabel.text = d.Cleared ? (d.FullRun && d.MapBestXAcc >= 0f ? "MAP BEST  " + Pct(d.MapBestXAcc) : "")
-                : "BEST  " + Pct(d.Best);
+            _progressLabel.text = d.FullRun && d.MapBestXAcc >= 0f ? "MAP BEST  " + Pct(d.MapBestXAcc) : "";
 
-            _statLabels.text = "ACCURACY\nMAX COMBO\nTIME" + (d.Cleared ? "" : "\nX-ACC");
-            _statValues.text = Pct(d.Acc) + "\n" + d.MaxCombo.ToString("N0") + "\n" + Snapshot.TimeStr(d.Time, d.Time >= 3600f)
-                               + (d.Cleared ? "" : "\n" + Pct(d.XAcc));
+            _statLabels.text = "ACCURACY\nMAX COMBO\nTIME";
+            _statValues.text = Pct(d.Acc) + "\n" + d.MaxCombo.ToString("N0") + "\n" + Snapshot.TimeStr(d.Time, d.Time >= 3600f);
 
             for (int i = 0; i < 10; i++)
             {
@@ -416,7 +435,7 @@ namespace NowOverlayer
                 _rows[i].Group.alpha = counts[i] == 0 && i >= 4 ? EmptyRowAlpha : 1f; // empty bad rows step back
             }
 
-            _shownAt = UnityEngine.Time.unscaledTime;
+            _shownAt = UnityEngine.Time.unscaledTime + delay;
             _until = seconds > 0f ? _shownAt + seconds : float.MaxValue;
             _root.gameObject.SetActive(true);
             // full screen goes over the rest of the overlay and the game's own UI (only works on an active canvas)
@@ -431,19 +450,48 @@ namespace NowOverlayer
         {
             _until = -1f;
             _root.gameObject.SetActive(false);
+            _mini.Hide();
+        }
+
+        public void Destroy()
+        {
+            UnityEngine.Object.Destroy(_root.gameObject);
+            UnityEngine.Object.Destroy(_mini.Root.gameObject);
         }
 
         public void Tick()
         {
+            _mini.Tick();
             if (!_root.gameObject.activeSelf || _d == null) return;
             float now = UnityEngine.Time.unscaledTime;
             float t = now - _shownAt;
+            if (t < 0f)
+            {
+                _group.alpha = 0f;
+                return;
+            }
 
-            // card: rise + fade + slight scale
-            float k = OutCubic(Mathf.Clamp01(t / 0.4f));
-            float sc = Mathf.Lerp(0.95f, 1f, k) * (_full ? FitScale() : Main.Settings.ResultScale);
-            _root.localScale = new Vector3(sc, sc, 1f);
-            _root.anchoredPosition = new Vector2(0f, Mathf.Lerp(-30f, 0f, k));
+            float k;
+            if (_full)
+            {
+                // jelly entrance: drops in squashed, the width and height spring back out of step; a hit when the rank lands
+                k = OutCubic(Mathf.Clamp01(t / 0.2f));
+                float fit = FitScale();
+                float landed = t - RankLands;
+                float hit = landed >= 0f ? Mathf.Exp(-landed * 8f) : 0f;
+                _root.localScale = new Vector3(fit * Mathf.LerpUnclamped(1.2f, 1f, Spring(t, 2.1f, 6.5f)), fit * Mathf.LerpUnclamped(0.5f, 1f, Spring(t, 2.5f, 6.5f)), 1f);
+                _root.anchoredPosition = new Vector2(Mathf.Sin(landed * 70f) * 9f * hit, Mathf.LerpUnclamped(-140f, 0f, Spring(t, 2.3f, 7f)));
+                _flash.color = new Color(1f, 1f, 1f, 0.28f * hit);
+            }
+            else
+            {
+                // card: rise + fade + slight scale
+                k = OutCubic(Mathf.Clamp01(t / 0.4f));
+                float sc = Mathf.Lerp(0.95f, 1f, k) * Main.Settings.ResultScale;
+                _root.localScale = new Vector3(sc, sc, 1f);
+                _root.anchoredPosition = new Vector2(0f, Mathf.Lerp(-30f, 0f, k));
+                _flash.color = Color.clear;
+            }
             float fadeOut = Mathf.Clamp01((_until - now) / 0.35f);
             _group.alpha = k * fadeOut;
             // an opaque full-screen card must not cover the pause menu or the screen editor
@@ -477,10 +525,10 @@ namespace NowOverlayer
             {
                 Row row = _rows[i];
                 int order = (i % 5) * 2 + i / 5;
-                float ri = OutCubic(Mathf.Clamp01((t - 0.3f - order * 0.045f) / 0.35f));
+                float ri = Mathf.Clamp01((t - 0.3f - order * 0.045f) / 0.4f);
                 float baseA = row.Target == 0 && i >= 4 ? EmptyRowAlpha : 1f;
-                row.Group.alpha = ri * baseA;
-                row.Rt.anchoredPosition = new Vector2(row.BaseX + (1f - ri) * 24f, row.Rt.anchoredPosition.y);
+                row.Group.alpha = OutCubic(ri) * baseA;
+                row.Rt.anchoredPosition = new Vector2(row.BaseX + (1f - OutBack(ri)) * (_full ? 70f : 24f), row.Rt.anchoredPosition.y);
                 float n = OutExpo(Mathf.Clamp01((t - 0.45f - order * 0.045f) / 0.9f));
                 row.Count.text = Mathf.RoundToInt(row.Target * n).ToString("N0");
                 float cw = row.Rt.sizeDelta.x;
@@ -497,7 +545,15 @@ namespace NowOverlayer
             return r.width > 0f && r.height > 0f ? Mathf.Min(r.width / W, r.height / H) : 1f;
         }
 
+        private const float RankLands = 0.78f; // when the rank stamp first reaches its size
+
+        // Damped spring from 0 to 1: passes 1, comes back, settles.
+        private static float Spring(float t, float hz, float damping) =>
+            1f - Mathf.Exp(-damping * t) * Mathf.Cos(2f * Mathf.PI * hz * t);
+
         private static float OutCubic(float t) => 1f - Mathf.Pow(1f - t, 3f);
+
+        private static float OutQuint(float t) => 1f - Mathf.Pow(1f - t, 5f);
 
         private static float OutExpo(float t) => t >= 1f ? 1f : 1f - Mathf.Pow(2f, -10f * t);
 
@@ -508,5 +564,162 @@ namespace NowOverlayer
         }
 
         private static string Pct(float v) => (Math.Round(v * 100f, 2)).ToString("0.00") + "%";
+
+        // ---- death: small card that flies across the screen and lands at the right edge ----
+
+        private class MiniCard
+        {
+            private const float MW = 592f, MH = 290f, MarginRight = 24f;
+            private const float ScreenY = 0.199f; // card center above the screen center, as a share of the height
+            private const float ZeroAlpha = 0.55f;
+
+            private static readonly string[] Labels =
+                { "XPERFECT", "PERFECT", "E.PERFECT", "L.PERFECT", "OVERLOAD", "EARLY!", "LATE!", "T.EARLY", "T.LATE", "MISS" };
+
+            public readonly RectTransform Root;
+            private readonly CanvasGroup _group;
+            private readonly RectTransform _letterRt;
+            private readonly TextMeshProUGUI _title, _hero, _statValues;
+            private readonly RectTransform _fill, _best;
+            private readonly TextMeshProUGUI[] _counts = new TextMeshProUGUI[10];
+            private readonly CanvasGroup[] _cells = new CanvasGroup[10];
+            private readonly int[] _targets = new int[10];
+            private readonly float _trackW;
+            private float _progress, _shownAt, _until;
+
+            public MiniCard(Transform parent)
+            {
+                Root = ElementView.NewRect("ResultMini", parent);
+                Root.anchorMin = Root.anchorMax = new Vector2(0.5f, 0.5f);
+                Root.sizeDelta = new Vector2(MW, MH);
+                _group = Root.gameObject.AddComponent<CanvasGroup>();
+                _group.blocksRaycasts = false;
+
+                Color top = Snapshot.Hex("FF6B78"), bottom = Snapshot.Hex("C21F3A");
+                float l = -MW / 2f, t = MH / 2f;
+                Box(Root, "Border", Vector2.zero, new Vector2(MW + 2f, MH + 2f), new Color(1f, 1f, 1f, 0.12f), 1.6f);
+                Box(Root, "Body", Vector2.zero, new Vector2(MW, MH), new Color(BodyColor.r, BodyColor.g, BodyColor.b, 0.96f), 1.6f);
+                Image rankBg = Box(Root, "RankArea", Vector2.zero, new Vector2(126f, MH - 12f), new Color(bottom.r, bottom.g, bottom.b, 0.16f), 2f);
+                Place(rankBg.rectTransform, l + 6f, 0f, 0f, 0.5f);
+
+                TextMeshProUGUI letter = Text(rankBg.rectTransform, "Letter", 124f, _num, TextAlignmentOptions.Center);
+                _letterRt = letter.rectTransform;
+                Place(_letterRt, 0f, 26f, 0.5f, 0.5f, 126f, 150f);
+                letter.text = "F";
+                letter.enableVertexGradient = true;
+                letter.colorGradient = new VertexGradient(top, top, bottom, bottom);
+                TextMeshProUGUI type = Text(rankBg.rectTransform, "Type", 21f, _num, TextAlignmentOptions.Center);
+                Place(type.rectTransform, 0f, -68f, 0.5f, 1f, 126f, 30f);
+                type.text = Korean ? "실패" : "FAILED";
+                type.color = Color.Lerp(top, bottom, 0.15f);
+                type.fontStyle = FontStyles.Bold;
+
+                float x0 = l + 150f, right = -l - 18f, w = right - x0;
+                _title = Text(Root, "Title", 24f, _bold, TextAlignmentOptions.TopLeft);
+                Place(_title.rectTransform, x0, t - 12f, 0f, 1f, w, 34f);
+                _title.overflowMode = TextOverflowModes.Ellipsis;
+
+                TextMeshProUGUI heroLabel = Text(Root, "HeroLabel", 15f, _num, TextAlignmentOptions.TopLeft);
+                Place(heroLabel.rectTransform, x0, t - 50f, 0f, 1f, 200f, 20f);
+                heroLabel.text = "PROGRESS";
+                heroLabel.color = Dim;
+                _hero = Text(Root, "Hero", 58f, _num, TextAlignmentOptions.TopLeft);
+                Place(_hero.rectTransform, x0 - 2f, t - 66f, 0f, 1f, 230f, 64f);
+                _hero.fontStyle = FontStyles.Bold;
+
+                TextMeshProUGUI statLabels = Text(Root, "StatLabels", 18f, _num, TextAlignmentOptions.TopLeft);
+                Place(statLabels.rectTransform, right - 180f, t - 54f, 0f, 1f, 90f, 74f);
+                statLabels.lineSpacing = 12f;
+                statLabels.color = Dim;
+                statLabels.text = "BEST\nX-ACC\nCOMBO";
+                _statValues = Text(Root, "StatValues", 18f, _num, TextAlignmentOptions.TopRight);
+                Place(_statValues.rectTransform, right, t - 54f, 1f, 1f, 110f, 74f);
+                _statValues.lineSpacing = 12f;
+                _statValues.fontStyle = FontStyles.Bold;
+
+                _trackW = w;
+                Image track = Box(Root, "Track", Vector2.zero, new Vector2(w, 5f), new Color(1f, 1f, 1f, 0.12f), 10f);
+                Place(track.rectTransform, x0, t - 134f, 0f, 1f);
+                Image fill = Box(track.rectTransform, "Fill", Vector2.zero, new Vector2(0f, 5f), bottom, 10f);
+                _fill = fill.rectTransform;
+                _fill.anchorMin = _fill.anchorMax = new Vector2(0f, 0.5f);
+                _fill.pivot = new Vector2(0f, 0.5f);
+                Image best = Box(track.rectTransform, "Best", Vector2.zero, new Vector2(3f, 15f), new Color(1f, 1f, 1f, 0.9f), 10f);
+                _best = best.rectTransform;
+                _best.anchorMin = _best.anchorMax = new Vector2(0f, 0.5f);
+
+                // 5 columns x 2 rows: count over its name
+                float cw = w / 5f, rh = 62f, gy = t - 148f;
+                for (int i = 0; i < 10; i++)
+                {
+                    RectTransform cell = ElementView.NewRect("Cell" + i, Root);
+                    Place(cell, x0 + i % 5 * cw, gy - i / 5 * rh, 0f, 1f, cw, rh);
+                    _cells[i] = cell.gameObject.AddComponent<CanvasGroup>();
+                    _counts[i] = Text(cell, "Count", 25f, _num, TextAlignmentOptions.TopLeft);
+                    Place(_counts[i].rectTransform, -cw / 2f, rh / 2f - 2f, 0f, 1f, cw, 32f);
+                    _counts[i].fontStyle = FontStyles.Bold;
+                    TextMeshProUGUI label = Text(cell, "Label", 14f, _num, TextAlignmentOptions.TopLeft);
+                    Place(label.rectTransform, -cw / 2f, rh / 2f - 34f, 0f, 1f, cw, 20f);
+                    label.text = Labels[i];
+                    label.color = Snapshot.Hex(RowColors[i]);
+                }
+                Root.gameObject.SetActive(false);
+            }
+
+            public void Show(Data d, float seconds)
+            {
+                _title.text = SongTitle(d.Title);
+                _statValues.text = Pct(d.Best) + "\n" + Pct(d.XAcc) + "\n" + d.MaxCombo.ToString("N0");
+                _progress = Mathf.Clamp01(d.Progress);
+                _best.gameObject.SetActive(d.Best > 0f && d.Best < 1f);
+                _best.anchoredPosition = new Vector2(_trackW * Mathf.Clamp01(d.Best), 0f);
+                int[] counts = Counts(d.Hits);
+                for (int i = 0; i < 10; i++)
+                {
+                    _targets[i] = counts[i];
+                    _cells[i].alpha = counts[i] == 0 ? ZeroAlpha : 1f;
+                }
+                _shownAt = UnityEngine.Time.unscaledTime;
+                _until = seconds > 0f ? _shownAt + seconds : float.MaxValue;
+                Root.gameObject.SetActive(true);
+                Root.SetAsLastSibling();
+                Tick();
+            }
+
+            public void Hide() => Root.gameObject.SetActive(false);
+
+            public void Tick()
+            {
+                if (!Root.gameObject.activeSelf) return;
+                float now = UnityEngine.Time.unscaledTime, t = now - _shownAt;
+                Rect screen = ((RectTransform)Root.parent).rect;
+                float sc = Main.Settings.ResultScale;
+                float target = screen.width / 2f - MarginRight - MW / 2f * sc;
+                float start = -screen.width / 2f - MW / 2f * sc;
+
+                // flies in from the left edge, passes its spot and wobbles back; stretched on the way, squashed on landing
+                float p = OutQuint(Mathf.Clamp01(t / 0.38f));
+                float settle = Mathf.Max(0f, t - 0.2f);
+                float wobble = Mathf.Sin(settle * 15f) * Mathf.Exp(-settle * 6f);
+                float fadeOut = Mathf.Clamp01((_until - now) / 0.35f);
+                float x = Mathf.Lerp(start, target, p) + wobble * 60f + (1f - fadeOut) * 60f;
+                Root.anchoredPosition = new Vector2(x, screen.height * ScreenY);
+                float stretch = 1f - p;
+                Root.localScale = new Vector3(sc * (1f + 0.35f * stretch - 0.09f * wobble), sc * (1f - 0.22f * stretch + 0.09f * wobble), 1f);
+                _group.alpha = Mathf.Clamp01(t / 0.08f) * fadeOut * (OverlayEditor.Active || OverlayEditor.Opening ? 0f : 1f);
+
+                // F stamps in once the card has landed
+                float stamp = Mathf.Clamp01((t - 0.3f) / 0.32f);
+                float ls = Mathf.LerpUnclamped(2f, 1f, OutBack(stamp));
+                _letterRt.localScale = new Vector3(ls, ls, 1f);
+
+                float c = OutExpo(Mathf.Clamp01((t - 0.2f) / 0.9f));
+                _hero.text = Pct(_progress * c);
+                _fill.sizeDelta = new Vector2(_trackW * _progress * c, 5f);
+                for (int i = 0; i < 10; i++) _counts[i].text = Mathf.RoundToInt(_targets[i] * c).ToString("N0");
+
+                if (now >= _until) Hide();
+            }
+        }
     }
 }

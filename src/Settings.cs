@@ -30,6 +30,7 @@ namespace NowOverlayer
         public float ResultSeconds = 6f; // 0 = until the next attempt
         public float ResultScale = 1f;
         public bool ReplaceGameResult = true; // clear card fills the screen; the game's own result text stays hidden
+        public float ResultBgAlpha = 0.8f;    // how solid that card's background is
 
         public string FontPath = "";
 

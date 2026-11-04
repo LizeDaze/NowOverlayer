@@ -55,10 +55,10 @@ namespace NowOverlayer
             GUILayout.EndVertical();
 
             Ui.Section("결과 카드");
-            GUILayout.Label("클리어하거나 죽으면 화면 가운데에 진행도, 정확도, 최대 콤보, 플레이 시간, 판정 수를 보여 줘요. 처음부터 깬 판이면 맵 최고 기록과 첫 클리어도 표시해요.", Ui.Sub);
+            GUILayout.Label("클리어하면 정확도와 판정 수를 크게 보여 주고, 죽으면 오른쪽에 작은 카드가 날아와요. 처음부터 깬 판이면 맵 최고 기록과 첫 클리어도 표시해요.", Ui.Sub);
             bool c1 = Ui.Switch("클리어했을 때", ResultOnClear);
             bool c2 = Ui.Switch("죽었을 때", ResultOnDeath);
-            bool c3 = ResultOnClear && Ui.Switch("얼불춤 기본 결과창 대신 띄우기", ReplaceGameResult, "\"축하합니다!\"와 판정 글자를 숨기고, 클리어 결과를 화면 전체에 띄워요. 다음 판을 시작할 때까지 떠 있어요");
+            bool c3 = ResultOnClear && Ui.Switch("얼불춤 기본 결과창 대신 띄우기", ReplaceGameResult, "\"축하합니다!\"와 판정 글자를 숨기고, 클리어 3초 뒤에 결과를 화면 전체에 띄워요. 다음 판을 시작할 때까지 떠 있어요");
             changed |= c1 != ResultOnClear || c2 != ResultOnDeath;
             if (ResultOnClear && c3 != ReplaceGameResult)
             {
@@ -67,6 +67,15 @@ namespace NowOverlayer
             }
             ResultOnClear = c1;
             ResultOnDeath = c2;
+            if (ResultOnClear && ReplaceGameResult)
+            {
+                float bg = Ui.Slider("클리어 화면 배경 불투명도", ResultBgAlpha, 0f, 1f);
+                if (Mathf.Abs(bg - ResultBgAlpha) > 0.004f)
+                {
+                    ResultBgAlpha = Mathf.Round(bg * 100f) / 100f;
+                    changed = true;
+                }
+            }
             float sec = Ui.Slider(ResultSeconds <= 0.05f ? "보여 주는 시간 · 다시 시작할 때까지" : "보여 주는 시간 (초)", ResultSeconds, 0f, 15f, "0");
             float sc = Ui.Slider(ResultOnClear && ReplaceGameResult ? "크기 (실패 결과만)" : "크기", ResultScale, 0.5f, 1.5f);
             if (Mathf.Abs(sec - ResultSeconds) > 0.4f || Mathf.Abs(sc - ResultScale) > 0.004f)
