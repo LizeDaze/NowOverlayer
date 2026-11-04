@@ -26,7 +26,9 @@ namespace NowOverlayer
             public float MapBestXAcc;
         }
 
-        private const float W = 960f, H = 520f, Pad = 34f, RankW = 330f;
+        private const float W = 1120f, H = 640f, Pad = 40f, RankW = 340f;
+        private const float EmptyRowAlpha = 0.6f, BarH = 4f, TrackH = 6f;
+        private static readonly Color Dim = new Color(0.78f, 0.78f, 0.84f);
 
         private static TMP_FontAsset _num, _bold, _regular;
         private static Material _glowMat;
@@ -35,7 +37,7 @@ namespace NowOverlayer
         private readonly CanvasGroup _group, _rankGroup;
         private readonly Image _topLine, _bandImg, _burstImg, _barFill, _barBest, _chip;
         private readonly TextMeshProUGUI _rank, _rankGhost, _clearType, _chipText, _badges, _title, _artist,
-            _heroLabel, _hero, _stats, _progressLabel;
+            _heroLabel, _hero, _statLabels, _statValues, _progressLabel;
         private readonly Row[] _rows = new Row[10];
 
         private class Row
@@ -70,9 +72,10 @@ namespace NowOverlayer
             _group = _root.gameObject.AddComponent<CanvasGroup>();
             _group.blocksRaycasts = false;
 
+            Box(_root, "Dim", Vector2.zero, new Vector2(8000f, 8000f), new Color(0f, 0f, 0f, 0.55f), 1f);
             Box(_root, "Shadow", new Vector2(0f, -14f), new Vector2(W + 50f, H + 50f), new Color(0f, 0f, 0f, 0.45f), 0.6f);
             Box(_root, "Border", Vector2.zero, new Vector2(W + 2f, H + 2f), new Color(1f, 1f, 1f, 0.10f), 1.2f);
-            Box(_root, "Body", Vector2.zero, new Vector2(W, H), new Color(0.035f, 0.035f, 0.05f, 0.95f), 1.2f);
+            Box(_root, "Body", Vector2.zero, new Vector2(W, H), new Color(0.035f, 0.035f, 0.05f, 0.985f), 1.2f);
             _topLine = Box(_root, "TopLine", Vector2.zero, new Vector2(W - 60f, 3f), Color.white, 10f);
             Place(_topLine.rectTransform, 0f, H / 2f - 1f, 0.5f, 1f);
 
@@ -108,55 +111,63 @@ namespace NowOverlayer
             Stretch(_rank.rectTransform);
             if (_glowMat) _rank.fontSharedMaterial = _glowMat;
 
-            _clearType = Text(_rankBox, "ClearType", 22f, _num, TextAlignmentOptions.Center);
-            Place(_clearType.rectTransform, 0f, -110f, 0.5f, 1f, RankW - 30f, 30f);
-            _clearType.characterSpacing = 10f;
+            _clearType = Text(_rankBox, "ClearType", 28f, _num, TextAlignmentOptions.Center);
+            Place(_clearType.rectTransform, 0f, -128f, 0.5f, 1f, RankW - 30f, 38f);
+            _clearType.characterSpacing = 3f;
+            _clearType.fontStyle = FontStyles.Bold;
 
             // ---- right: song + score ----
             float left = -W / 2f + RankW + 20f, right = W / 2f - Pad, top = H / 2f - Pad, colW = right - left;
 
-            _chip = Box(_root, "Chip", Vector2.zero, new Vector2(140f, 28f), Color.white, 3f);
+            _chip = Box(_root, "Chip", Vector2.zero, new Vector2(140f, 34f), Color.white, 3f);
             Place(_chip.rectTransform, left, top, 0f, 1f);
-            _chipText = Text(_chip.rectTransform, "Text", 14f, _num, TextAlignmentOptions.Center);
+            _chipText = Text(_chip.rectTransform, "Text", 18f, _num, TextAlignmentOptions.Center);
             Stretch(_chipText.rectTransform);
-            _chipText.characterSpacing = 12f;
+            _chipText.characterSpacing = 3f;
 
-            _badges = Text(_root, "Badges", 15f, _bold, TextAlignmentOptions.MidlineRight);
-            Place(_badges.rectTransform, right, top, 1f, 1f, 420f, 28f);
+            _badges = Text(_root, "Badges", 18f, _bold, TextAlignmentOptions.MidlineRight);
+            Place(_badges.rectTransform, right, top, 1f, 1f, 480f, 34f);
 
-            _title = Text(_root, "Title", 32f, _bold, TextAlignmentOptions.TopLeft);
-            Place(_title.rectTransform, left, top - 42f, 0f, 1f, colW, 42f);
+            _title = Text(_root, "Title", 38f, _bold, TextAlignmentOptions.TopLeft);
+            Place(_title.rectTransform, left, top - 46f, 0f, 1f, colW, 52f);
             _title.overflowMode = TextOverflowModes.Ellipsis;
-            _artist = Text(_root, "Artist", 17f, _regular, TextAlignmentOptions.TopLeft);
-            Place(_artist.rectTransform, left, top - 84f, 0f, 1f, colW, 26f);
-            _artist.color = new Color(0.62f, 0.62f, 0.7f);
+            _artist = Text(_root, "Artist", 21f, _regular, TextAlignmentOptions.TopLeft);
+            Place(_artist.rectTransform, left, top - 98f, 0f, 1f, colW, 32f);
+            _artist.color = Dim;
             _artist.overflowMode = TextOverflowModes.Ellipsis;
 
-            _heroLabel = Text(_root, "HeroLabel", 14f, _num, TextAlignmentOptions.TopLeft);
-            Place(_heroLabel.rectTransform, left, top - 124f, 0f, 1f, 300f, 20f);
-            _heroLabel.characterSpacing = 14f;
-            _heroLabel.color = new Color(0.62f, 0.62f, 0.7f);
-            _hero = Text(_root, "Hero", 76f, _num, TextAlignmentOptions.TopLeft);
-            Place(_hero.rectTransform, left - 3f, top - 140f, 0f, 1f, 360f, 80f);
+            _heroLabel = Text(_root, "HeroLabel", 19f, _num, TextAlignmentOptions.TopLeft);
+            Place(_heroLabel.rectTransform, left, top - 142f, 0f, 1f, 300f, 26f);
+            _heroLabel.characterSpacing = 3f;
+            _heroLabel.color = Dim;
+            _hero = Text(_root, "Hero", 88f, _num, TextAlignmentOptions.TopLeft);
+            Place(_hero.rectTransform, left - 3f, top - 164f, 0f, 1f, 370f, 96f);
+            _hero.fontStyle = FontStyles.Bold;
 
-            _stats = Text(_root, "Stats", 15f, _num, TextAlignmentOptions.TopRight);
-            Place(_stats.rectTransform, right, top - 128f, 1f, 1f, 260f, 90f);
-            _stats.lineSpacing = 18f;
+            // labels on the left and values on the right edge, so each column lines up
+            _statLabels = Text(_root, "StatLabels", 22f, _num, TextAlignmentOptions.TopLeft);
+            Place(_statLabels.rectTransform, right - 330f, top - 144f, 0f, 1f, 200f, 124f);
+            _statLabels.lineSpacing = 12f;
+            _statLabels.color = Dim;
+            _statValues = Text(_root, "StatValues", 22f, _num, TextAlignmentOptions.TopRight);
+            Place(_statValues.rectTransform, right, top - 144f, 1f, 1f, 200f, 124f);
+            _statValues.lineSpacing = 12f;
+            _statValues.fontStyle = FontStyles.Bold;
 
-            Image track = Box(_root, "Track", Vector2.zero, new Vector2(colW, 4f), new Color(1f, 1f, 1f, 0.08f), 10f);
-            Place(track.rectTransform, left, top - 236f, 0f, 1f);
-            _barFill = Box(track.rectTransform, "Fill", Vector2.zero, new Vector2(0f, 4f), Color.white, 10f);
+            Image track = Box(_root, "Track", Vector2.zero, new Vector2(colW, TrackH), new Color(1f, 1f, 1f, 0.12f), 10f);
+            Place(track.rectTransform, left, top - 296f, 0f, 1f);
+            _barFill = Box(track.rectTransform, "Fill", Vector2.zero, new Vector2(0f, TrackH), Color.white, 10f);
             _barFill.rectTransform.anchorMin = _barFill.rectTransform.anchorMax = new Vector2(0f, 0.5f);
             _barFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-            _barBest = Box(track.rectTransform, "Best", Vector2.zero, new Vector2(3f, 14f), new Color(1f, 1f, 1f, 0.9f), 10f);
+            _barBest = Box(track.rectTransform, "Best", Vector2.zero, new Vector2(3f, 18f), new Color(1f, 1f, 1f, 0.9f), 10f);
             _barBest.rectTransform.anchorMin = _barBest.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            _progressLabel = Text(_root, "ProgressLabel", 13f, _num, TextAlignmentOptions.TopRight);
-            Place(_progressLabel.rectTransform, right, top - 216f, 1f, 1f, 300f, 18f);
-            _progressLabel.characterSpacing = 8f;
-            _progressLabel.color = new Color(0.62f, 0.62f, 0.7f);
+            _progressLabel = Text(_root, "ProgressLabel", 18f, _num, TextAlignmentOptions.TopRight);
+            Place(_progressLabel.rectTransform, right, top - 270f, 1f, 1f, 330f, 24f);
+            _progressLabel.characterSpacing = 2f;
+            _progressLabel.color = Dim;
 
             // ---- judgement table: 2 columns x 5 rows ----
-            float gap = 26f, cw = (colW - gap) / 2f, rh = 38f, ty = top - 258f;
+            float gap = 30f, cw = (colW - gap) / 2f, rh = 49f, ty = top - 314f;
             for (int i = 0; i < 10; i++)
             {
                 int col = i / 5, r = i % 5;
@@ -168,20 +179,21 @@ namespace NowOverlayer
                 row.Group = rt.gameObject.AddComponent<CanvasGroup>();
                 Color c = Snapshot.Hex(RowColors[i]);
 
-                Image tick = Box(rt, "Tick", Vector2.zero, new Vector2(3f, 16f), c, 10f);
-                Place(tick.rectTransform, -cw / 2f, rh / 2f - 6f, 0f, 1f);
-                TextMeshProUGUI label = Text(rt, "Label", 15f, _num, TextAlignmentOptions.TopLeft);
-                Place(label.rectTransform, -cw / 2f + 12f, rh / 2f - 5f, 0f, 1f, cw - 90f, 20f);
+                Image tick = Box(rt, "Tick", Vector2.zero, new Vector2(4f, 24f), c, 10f);
+                Place(tick.rectTransform, -cw / 2f, rh / 2f - 7f, 0f, 1f);
+                TextMeshProUGUI label = Text(rt, "Label", 20f, _num, TextAlignmentOptions.TopLeft);
+                Place(label.rectTransform, -cw / 2f + 14f, rh / 2f - 7f, 0f, 1f, cw - 120f, 28f);
                 label.text = RowNames[i];
                 label.color = c;
-                label.characterSpacing = 6f;
-                row.Count = Text(rt, "Count", 21f, _num, TextAlignmentOptions.TopRight);
-                Place(row.Count.rectTransform, cw / 2f, rh / 2f - 2f, 1f, 1f, 110f, 26f);
+                label.characterSpacing = 1f;
+                row.Count = Text(rt, "Count", 29f, _num, TextAlignmentOptions.TopRight);
+                Place(row.Count.rectTransform, cw / 2f, rh / 2f - 1f, 1f, 1f, 120f, 36f);
+                row.Count.fontStyle = FontStyles.Bold;
 
-                Image barBg = Box(rt, "BarBg", Vector2.zero, new Vector2(cw, 2f), new Color(1f, 1f, 1f, 0.06f), 10f);
-                Place(barBg.rectTransform, -cw / 2f, -rh / 2f + 6f, 0f, 0f);
-                Image bar = Box(rt, "Bar", Vector2.zero, new Vector2(0f, 2f), c, 10f);
-                Place(bar.rectTransform, -cw / 2f, -rh / 2f + 6f, 0f, 0f);
+                Image barBg = Box(rt, "BarBg", Vector2.zero, new Vector2(cw, BarH), new Color(1f, 1f, 1f, 0.09f), 10f);
+                Place(barBg.rectTransform, -cw / 2f, -rh / 2f + 5f, 0f, 0f);
+                Image bar = Box(rt, "Bar", Vector2.zero, new Vector2(0f, BarH), c, 10f);
+                Place(bar.rectTransform, -cw / 2f, -rh / 2f + 5f, 0f, 0f);
                 row.Bar = bar.rectTransform;
                 _rows[i] = row;
             }
@@ -347,20 +359,20 @@ namespace NowOverlayer
             _accent = g.Bottom;
             _rank.text = g.Letter;
             _rankGhost.text = g.Letter;
-            _rank.fontSize = _rankGhost.fontSize = g.Letter.Length > 1 ? 170f : 230f;
+            _rank.fontSize = _rankGhost.fontSize = g.Letter.Length > 1 ? 190f : 250f;
             _rank.enableVertexGradient = true;
             _rank.colorGradient = new VertexGradient(g.Top, g.Top, g.Bottom, g.Bottom);
             if (_glowMat) _glowMat.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(g.Bottom.r, g.Bottom.g, g.Bottom.b, 0.55f));
             _clearType.text = g.Type;
-            _clearType.color = Color.Lerp(g.Top, g.Bottom, 0.4f);
+            _clearType.color = Color.Lerp(g.Top, g.Bottom, 0.15f);
             _bandImg.color = new Color(g.Bottom.r, g.Bottom.g, g.Bottom.b, 0.16f);
             _burstImg.color = new Color(g.Top.r, g.Top.g, g.Top.b, 0f);
             _topLine.color = g.Bottom;
 
             _chip.color = new Color(_accent.r, _accent.g, _accent.b, 0.18f);
-            _chipText.color = Color.Lerp(g.Top, g.Bottom, 0.3f);
+            _chipText.color = Color.Lerp(g.Top, g.Bottom, 0.1f);
             _chipText.text = d.Cleared ? "STAGE CLEAR" : "STAGE FAILED";
-            _chip.rectTransform.sizeDelta = new Vector2(_chipText.GetPreferredValues(_chipText.text).x + 30f, 28f);
+            _chip.rectTransform.sizeDelta = new Vector2(_chipText.GetPreferredValues(_chipText.text).x + 32f, 34f);
 
             var badges = new List<string>();
             if (d.FirstClear) badges.Add("FIRST CLEAR");
@@ -383,17 +395,15 @@ namespace NowOverlayer
             _progressLabel.text = d.Cleared ? (d.FullRun && d.MapBestXAcc >= 0f ? "MAP BEST  " + Pct(d.MapBestXAcc) : "")
                 : "BEST  " + Pct(d.Best);
 
-            const string dim = "<color=#9E9EAD>";
-            _stats.text = dim + "ACCURACY</color>   " + Pct(d.Acc) + "\n"
-                          + dim + "MAX COMBO</color>   " + d.MaxCombo.ToString("N0") + "\n"
-                          + dim + "TIME</color>   " + Snapshot.TimeStr(d.Time, d.Time >= 3600f)
-                          + (d.Cleared ? "" : "\n" + dim + "X-ACC</color>   " + Pct(d.XAcc));
+            _statLabels.text = "ACCURACY\nMAX COMBO\nTIME" + (d.Cleared ? "" : "\nX-ACC");
+            _statValues.text = Pct(d.Acc) + "\n" + d.MaxCombo.ToString("N0") + "\n" + Snapshot.TimeStr(d.Time, d.Time >= 3600f)
+                               + (d.Cleared ? "" : "\n" + Pct(d.XAcc));
 
             for (int i = 0; i < 10; i++)
             {
                 _rows[i].Target = counts[i];
                 _rows[i].Share = counts[i] / (float)most;
-                _rows[i].Group.alpha = counts[i] == 0 && i >= 4 ? 0.45f : 1f; // empty bad rows step back
+                _rows[i].Group.alpha = counts[i] == 0 && i >= 4 ? EmptyRowAlpha : 1f; // empty bad rows step back
             }
 
             _shownAt = UnityEngine.Time.unscaledTime;
@@ -445,7 +455,7 @@ namespace NowOverlayer
             // hero number counts up, bar fills
             float c = OutExpo(Mathf.Clamp01((t - 0.15f) / 1f));
             _hero.text = Pct(_heroTarget * c);
-            _barFill.rectTransform.sizeDelta = new Vector2(TrackW * _barTarget * c, 4f);
+            _barFill.rectTransform.sizeDelta = new Vector2(TrackW * _barTarget * c, TrackH);
 
             // judgement rows slide in one after another, counts and bars grow
             for (int i = 0; i < 10; i++)
@@ -453,13 +463,13 @@ namespace NowOverlayer
                 Row row = _rows[i];
                 int order = (i % 5) * 2 + i / 5;
                 float ri = OutCubic(Mathf.Clamp01((t - 0.3f - order * 0.045f) / 0.35f));
-                float baseA = row.Target == 0 && i >= 4 ? 0.45f : 1f;
+                float baseA = row.Target == 0 && i >= 4 ? EmptyRowAlpha : 1f;
                 row.Group.alpha = ri * baseA;
                 row.Rt.anchoredPosition = new Vector2(row.BaseX + (1f - ri) * 24f, row.Rt.anchoredPosition.y);
                 float n = OutExpo(Mathf.Clamp01((t - 0.45f - order * 0.045f) / 0.9f));
                 row.Count.text = Mathf.RoundToInt(row.Target * n).ToString("N0");
                 float cw = row.Rt.sizeDelta.x;
-                row.Bar.sizeDelta = new Vector2(cw * row.Share * n, 2f);
+                row.Bar.sizeDelta = new Vector2(cw * row.Share * n, BarH);
             }
 
             if (now >= _until) Hide();
