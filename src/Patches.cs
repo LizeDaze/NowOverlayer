@@ -100,23 +100,15 @@ namespace NowOverlayer
             return !f || !f.nextfloor || !f.nextfloor.auto;
         }
 
-        [HarmonyPatch(typeof(scrMisc), "GetHitMarginInDeg")]
-        private static class TimingDeg
+        // Game 3.x judges every hit here (it replaced GetHitMarginInDeg / GetHitMarginInSec). 180 degrees = one beat.
+        [HarmonyPatch(typeof(scrMisc), "GetHitMargin")]
+        private static class Timing
         {
-            private static void Postfix(float hitAngle, float refAngle, bool clockwise, float floorBpm, float conductorPitch)
+            private static void Postfix(float hitangle, float refangle, bool isCW, float bpmTimesSpeed, float conductorPitch)
             {
                 if (!TimingAvailable()) return;
-                float deg = (hitAngle - refAngle) * (clockwise ? 1f : -1f) * 57.29578f;
-                Overlay.Instance?.OnTiming(deg / 180f / floorBpm / conductorPitch * 60000f);
-            }
-        }
-
-        [HarmonyPatch(typeof(scrMisc), "GetHitMarginInSec")]
-        private static class TimingSec
-        {
-            private static void Postfix(double timeDiff)
-            {
-                if (TimingAvailable()) Overlay.Instance?.OnTiming((float)timeDiff * 1000f);
+                float deg = (hitangle - refangle) * (isCW ? 1f : -1f) * 57.29578f;
+                Overlay.Instance?.OnTiming(deg / 180f / bpmTimesSpeed / conductorPitch * 60000f);
             }
         }
 
