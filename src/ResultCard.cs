@@ -29,6 +29,7 @@ namespace NowOverlayer
         private const float W = 1120f, H = 640f, Pad = 40f, RankW = 340f;
         private const float EmptyRowAlpha = 0.6f, BarH = 4f, TrackH = 6f;
         private static readonly Color Dim = new Color(0.78f, 0.78f, 0.84f);
+        private static readonly Color BodyColor = new Color(0.035f, 0.035f, 0.05f);
 
         private static TMP_FontAsset _num, _bold, _regular;
         private static Material _glowMat;
@@ -39,6 +40,9 @@ namespace NowOverlayer
         private readonly TextMeshProUGUI _rank, _rankGhost, _clearType, _chipText, _badges, _title, _artist,
             _heroLabel, _hero, _statLabels, _statValues, _progressLabel;
         private readonly Row[] _rows = new Row[10];
+        private readonly Canvas _canvas;
+        private readonly Image _dim, _shadow, _border;
+        private bool _full; // clear card taking over from the game's own result text (Settings.ReplaceGameResult)
 
         private class Row
         {
@@ -68,14 +72,14 @@ namespace NowOverlayer
             _root = ElementView.NewRect("Result", parent);
             _root.anchorMin = _root.anchorMax = new Vector2(0.5f, 0.5f);
             _root.sizeDelta = new Vector2(W, H);
-            _root.gameObject.AddComponent<Canvas>();
+            _canvas = _root.gameObject.AddComponent<Canvas>();
             _group = _root.gameObject.AddComponent<CanvasGroup>();
             _group.blocksRaycasts = false;
 
-            Box(_root, "Dim", Vector2.zero, new Vector2(8000f, 8000f), new Color(0f, 0f, 0f, 0.55f), 1f);
-            Box(_root, "Shadow", new Vector2(0f, -14f), new Vector2(W + 50f, H + 50f), new Color(0f, 0f, 0f, 0.45f), 0.6f);
-            Box(_root, "Border", Vector2.zero, new Vector2(W + 2f, H + 2f), new Color(1f, 1f, 1f, 0.10f), 1.2f);
-            Box(_root, "Body", Vector2.zero, new Vector2(W, H), new Color(0.035f, 0.035f, 0.05f, 0.985f), 1.2f);
+            _dim = Box(_root, "Dim", Vector2.zero, new Vector2(8000f, 8000f), new Color(0f, 0f, 0f, 0.55f), 1f);
+            _shadow = Box(_root, "Shadow", new Vector2(0f, -14f), new Vector2(W + 50f, H + 50f), new Color(0f, 0f, 0f, 0.45f), 0.6f);
+            _border = Box(_root, "Border", Vector2.zero, new Vector2(W + 2f, H + 2f), new Color(1f, 1f, 1f, 0.10f), 1.2f);
+            Box(_root, "Body", Vector2.zero, new Vector2(W, H), new Color(BodyColor.r, BodyColor.g, BodyColor.b, 0.985f), 1.2f);
             _topLine = Box(_root, "TopLine", Vector2.zero, new Vector2(W - 60f, 3f), Color.white, 10f);
             Place(_topLine.rectTransform, 0f, H / 2f - 1f, 0.5f, 1f);
 
@@ -336,6 +340,10 @@ namespace NowOverlayer
         public void Show(Data d, float seconds)
         {
             _d = d;
+            _full = d.Cleared && Main.Settings.ReplaceGameResult;
+            _dim.color = _full ? BodyColor : new Color(0f, 0f, 0f, 0.55f);
+            _shadow.gameObject.SetActive(!_full);
+            _border.gameObject.SetActive(!_full);
             int[] h = d.Hits;
             int[] counts =
             {
@@ -411,6 +419,9 @@ namespace NowOverlayer
             _shownAt = UnityEngine.Time.unscaledTime;
             _until = seconds > 0f ? _shownAt + seconds : float.MaxValue;
             _root.gameObject.SetActive(true);
+            // full screen goes over the rest of the overlay and the game's own UI (only works on an active canvas)
+            _canvas.overrideSorting = _full;
+            if (_full) _canvas.sortingOrder = 30000;
             Tick();
         }
 
@@ -430,11 +441,13 @@ namespace NowOverlayer
 
             // card: rise + fade + slight scale
             float k = OutCubic(Mathf.Clamp01(t / 0.4f));
-            float sc = Mathf.Lerp(0.95f, 1f, k) * Main.Settings.ResultScale;
+            float sc = Mathf.Lerp(0.95f, 1f, k) * (_full ? FitScale() : Main.Settings.ResultScale);
             _root.localScale = new Vector3(sc, sc, 1f);
             _root.anchoredPosition = new Vector2(0f, Mathf.Lerp(-30f, 0f, k));
             float fadeOut = Mathf.Clamp01((_until - now) / 0.35f);
             _group.alpha = k * fadeOut;
+            // an opaque full-screen card must not cover the pause menu or the screen editor
+            if (_full && (OverlayEditor.Active || OverlayEditor.Opening || (scrController.instance && scrController.instance.paused))) _group.alpha = 0f;
 
             // band sweeps in from the left
             float b = OutCubic(Mathf.Clamp01((t - 0.05f) / 0.5f));
@@ -475,6 +488,13 @@ namespace NowOverlayer
             }
 
             if (now >= _until) Hide();
+        }
+
+        // as big as the screen allows, keeping the card's shape
+        private float FitScale()
+        {
+            Rect r = ((RectTransform)_root.parent).rect;
+            return r.width > 0f && r.height > 0f ? Mathf.Min(r.width / W, r.height / H) : 1f;
         }
 
         private static float OutCubic(float t) => 1f - Mathf.Pow(1f - t, 3f);

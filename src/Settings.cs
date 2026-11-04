@@ -29,6 +29,7 @@ namespace NowOverlayer
         public bool ResultOnDeath = true;
         public float ResultSeconds = 6f; // 0 = until the next attempt
         public float ResultScale = 1f;
+        public bool ReplaceGameResult = true; // clear card fills the screen; the game's own result text stays hidden
 
         public string FontPath = "";
 

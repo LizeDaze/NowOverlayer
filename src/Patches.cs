@@ -112,6 +112,24 @@ namespace NowOverlayer
             }
         }
 
+        [HarmonyPatch(typeof(DetailedResults), "Show")]
+        private static class GameResultText
+        {
+            private static bool Prefix() => !(Overlay.Instance && Overlay.Instance.ReplacesGameResult);
+        }
+
+        [HarmonyPatch(typeof(scrController), "OnLandOnPortal")]
+        private static class GameCongrats
+        {
+            private static void Postfix(scrController __instance)
+            {
+                if (!Overlay.Instance || !Overlay.Instance.ReplacesGameResult) return;
+                if (__instance.txtCongrats) __instance.txtCongrats.text = "";
+                if (__instance.txtAprilCongrats) __instance.txtAprilCongrats.text = "";
+                if (__instance.txtAllStrictClear) __instance.txtAllStrictClear.gameObject.SetActive(false);
+            }
+        }
+
         // Same as Overlayer's HudVisibilityPatch: the game's level caption is a scrHUDText with isTitle; while an
         // overlay item shows the song (곡 정보, or {Title}/{Artist} in a custom text) keep its graphic off.
         [HarmonyPatch(typeof(scrHUDText), "Update")]

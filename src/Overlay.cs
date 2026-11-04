@@ -513,6 +513,9 @@ namespace NowOverlayer
             Obs.Fire(Main.Settings.ObsOnDeath);
         }
 
+        // The clear card stands in for the game's result text (see Patches.GameResultText / GameCongrats).
+        public bool ReplacesGameResult => _shown && Main.Settings.ResultOnClear && Main.Settings.ReplaceGameResult;
+
         public void Clear()
         {
             if (!_shown) return;
@@ -525,7 +528,7 @@ namespace NowOverlayer
                 d.NewBestXAcc = r.NewBestXAcc;
                 d.MapBestXAcc = Stats.Get(_hash)?.BestXAcc ?? -1f;
             }
-            if (Main.Settings.ResultOnClear && d != null) _result.Show(d, Main.Settings.ResultSeconds);
+            if (Main.Settings.ResultOnClear && d != null) _result.Show(d, Main.Settings.ReplaceGameResult ? 0f : Main.Settings.ResultSeconds);
             if (d != null) Capture.Schedule(true, d.FirstClear || d.NewBestXAcc || d.NewBestProgress, d.Title);
             Obs.Fire(Main.Settings.ObsOnClear);
         }
