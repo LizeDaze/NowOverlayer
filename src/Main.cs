@@ -31,11 +31,13 @@ namespace NowOverlayer
                 Updater.Check(false);
                 _harmony = new Harmony(mod.Info.Id);
                 Patches.Apply(_harmony);
+                TUFReplayApi.TryRegister();
             }
             else
             {
                 _harmony?.UnpatchAll(mod.Info.Id);
                 _harmony = null;
+                TUFReplayApi.Shutdown();
                 Obs.Disconnect();
                 Discord.Close();
                 Overlay.DestroyInstance();

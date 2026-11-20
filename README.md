@@ -10,6 +10,7 @@
 - 항목마다 글꼴 지정 (Windows 글꼴, 모드 `Font` 폴더, 또는 파일 경로)
 - 리듬게임 스타일 결과 카드 (XPerfect 지원, 랭크 표시)
 - 디스코드 상태 표시, OBS 장면 전환 · 녹화 시작/중지 (obs-websocket v5)
+- [TUFReplay](https://github.com/KGH1113/TUFReplay) 리플레이 · 영상 렌더: 그 런의 시도 횟수 · 기록 · 시각을 보여 주고, 리플레이는 기록에 남기지 않아요 (TUFReplay ReplayApi 2 이상)
 - 프리셋 · 단축키
 - 자동 업데이트 (GitHub 릴리스, 다음 실행 때 적용)
 - 최신 버전과 Steam 베타 `older` 버전 모두 지원

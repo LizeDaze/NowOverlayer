@@ -67,32 +67,29 @@ namespace NowOverlayer
             public bool NewBestXAcc, NewBestAcc, FirstClear;
         }
 
+        // What a clear with these numbers beats, compared with the records before it (null = none yet). Saves nothing:
+        // a TUFReplay replay compares with the records its run had.
+        public static ClearResult Compare(MapStat before, float xacc, float acc) => new ClearResult
+        {
+            FirstClear = before?.FirstClear == null,
+            NewBestXAcc = before != null && before.BestXAcc >= 0f && xacc > before.BestXAcc,
+            NewBestAcc = before != null && before.BestAcc >= 0f && acc > before.BestAcc
+        };
+
         public static ClearResult RecordClear(byte[] hash, float xacc, float acc)
         {
-            var r = new ClearResult();
-            if (hash == null) return r;
+            if (hash == null) return new ClearResult();
             string key = Key(hash);
             if (!_maps.TryGetValue(key, out MapStat s))
             {
                 s = new MapStat();
                 _maps[key] = s;
             }
-            if (s.FirstClear == null)
-            {
-                s.FirstClear = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
-                r.FirstClear = true;
-            }
+            ClearResult r = Compare(s, xacc, acc);
+            if (s.FirstClear == null) s.FirstClear = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
             s.Clears++;
-            if (xacc > s.BestXAcc)
-            {
-                r.NewBestXAcc = s.BestXAcc >= 0f;
-                s.BestXAcc = xacc;
-            }
-            if (acc > s.BestAcc)
-            {
-                r.NewBestAcc = s.BestAcc >= 0f;
-                s.BestAcc = acc;
-            }
+            if (xacc > s.BestXAcc) s.BestXAcc = xacc;
+            if (acc > s.BestAcc) s.BestAcc = acc;
             Save();
             return r;
         }

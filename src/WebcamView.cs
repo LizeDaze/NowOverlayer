@@ -68,9 +68,12 @@ namespace NowOverlayer
 
         public override void Render(Snapshot s) { }
 
+        // a replay shows the run, and TUFReplay shows the camera it recorded with it
+        protected override bool HiddenInReplay(bool rendering) => true;
+
         public override void Tick(float dt)
         {
-            bool want = Cfg.Visible && Overlay.Instance && Overlay.Instance.IsVisible;
+            bool want = Shown && Overlay.Instance && Overlay.Instance.IsVisible;
             if (want)
             {
                 _hiddenSince = -1f;

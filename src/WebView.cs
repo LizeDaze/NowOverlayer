@@ -100,9 +100,12 @@ namespace NowOverlayer
 
         public override void Render(Snapshot s) { }
 
+        // A live page (chat, alerts) stays on while a run is replayed in the game, but it can't follow a video's time.
+        protected override bool HiddenInReplay(bool rendering) => rendering;
+
         public override void Tick(float dt)
         {
-            bool want = Cfg.Visible && Overlay.Instance && Overlay.Instance.IsVisible && !string.IsNullOrEmpty(Cfg.Url);
+            bool want = Shown && Overlay.Instance && Overlay.Instance.IsVisible && !string.IsNullOrEmpty(Cfg.Url);
             if (want && !_failed && (_proc == null || _proc.HasExited)) Start();
             if (_proc != null && !_proc.HasExited && want == _paused)
             {

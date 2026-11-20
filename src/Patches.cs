@@ -200,6 +200,13 @@ namespace NowOverlayer
         // Called when our Discord setting changes, so the game's presence comes back (or is cleared) right away.
         public static void RefreshGamePresence() => DiscordController.shouldUpdatePresence = true;
 
+        // TUFReplay may load after this mod: connect once it is there (TUFReplayApi).
+        [HarmonyPatch(typeof(UnityModManagerNet.UnityModManager.ModEntry), "Load")]
+        private static class ModLoaded
+        {
+            private static void Postfix() => TUFReplayApi.TryRegister();
+        }
+
         [HarmonyPatch(typeof(scrMarginTracker), "AddHit")]
         private static class Hit
         {

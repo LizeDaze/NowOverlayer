@@ -20,6 +20,17 @@ namespace NowOverlayer
         // a level (re)started: Overlay.Show
         public virtual void OnLevelStart() { }
 
+        // Items that show something live, not the run (the webcam, web pages), step aside while TUFReplay replays a run.
+        protected virtual bool HiddenInReplay(bool rendering) => false;
+
+        public bool Shown => Cfg.Visible && !(ReplayRun.Active && HiddenInReplay(ReplayRun.Rendering));
+
+        public void SyncShown()
+        {
+            bool on = Shown;
+            if (Root.gameObject.activeSelf != on) Root.gameObject.SetActive(on);
+        }
+
         public void ApplyLayout(float globalSize)
         {
             _size = globalSize;
@@ -33,7 +44,7 @@ namespace NowOverlayer
             }
             Root.anchorMin = Root.anchorMax = new Vector2(Cfg.AnchorX, Cfg.AnchorY);
             Root.pivot = new Vector2(Cfg.PivotX, Cfg.PivotY);
-            Root.gameObject.SetActive(Cfg.Visible);
+            Root.gameObject.SetActive(Shown);
             ApplyStyle();
             ApplyPose(Pose.Identity);
         }

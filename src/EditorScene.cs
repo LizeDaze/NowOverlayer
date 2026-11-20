@@ -15,6 +15,7 @@ namespace NowOverlayer
         public static void Enter()
         {
             AsyncInputManager.ClearKeys();
+            TUFReplayApi.PauseNativeInput(true);
             try
             {
                 Freeze();
@@ -47,6 +48,7 @@ namespace NowOverlayer
             // keys pressed while editing would be replayed as hits; the closing key (Esc) is still down this frame
             AsyncInputManager.ClearKeys();
             _releaseFrame = Time.frameCount + 2;
+            TUFReplayApi.PauseNativeInput(false);
             try
             {
                 Unfreeze();

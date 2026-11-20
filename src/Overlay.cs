@@ -176,7 +176,11 @@ namespace NowOverlayer
         private static readonly System.Reflection.MethodInfo SnapshotMethod =
             Type.GetType("UnityEngine.ScreenCapture, UnityEngine.ScreenCaptureModule")?.GetMethod("CaptureScreenshotAsTexture", Type.EmptyTypes);
 
-        public void ShowToast(string msg) => _toast?.Show(msg);
+        // Toasts are about the live game, not the run: they stay out of rendered videos.
+        public void ShowToast(string msg)
+        {
+            if (!ReplayRun.Rendering) _toast?.Show(msg);
+        }
 
         public void CloseResult() => _result?.Hide();
 
@@ -248,7 +252,7 @@ namespace NowOverlayer
 
         public void PlayIntro()
         {
-            _introStart = Time.unscaledTime;
+            _introStart = PlayClock.Now;
             _dirty = true;
         }
 
@@ -264,7 +268,7 @@ namespace NowOverlayer
         {
             if (_introStart < 0f) return;
             Settings s = Main.Settings;
-            float elapsed = Time.unscaledTime - _introStart;
+            float elapsed = PlayClock.Now - _introStart;
             float dur = Mathf.Max(s.AnimDuration, 0.05f);
             bool done = true;
             int order = 0;
@@ -429,6 +433,14 @@ namespace NowOverlayer
                 scrController ctrl = scrController.instance;
                 scrConductor cond = scrConductor.instance;
 
+                // A TUFReplay replay shows its run's own values and saves nothing. A timeline seek restarts the level
+                // within the same replay: the run goes on, so its entry animation does not play again.
+                bool seek = ReplayRun.Active && _replaySession == ReplayRun.Session;
+                _replaying = ReplayRun.Active;
+                _replaySession = ReplayRun.Session;
+                _recorded = _replaying ? ReplayRun.State : null;
+                RunClockRecorder.Stop();
+
                 byte[] hash = null;
                 try
                 {
@@ -448,12 +460,12 @@ namespace NowOverlayer
                 _title = level != null ? Strip(level.song) : "";
                 _artist = level != null ? Strip(level.artist) : "";
 
-                _autoOnce = RDC.auto || ctrl.noFail;
+                _autoOnce = _recorded?.NoRecords ?? (RDC.auto || ctrl.noFail);
                 _startProgress = _lastSavedStart = floor / (float)ADOBase.lm.listFloors.Count;
                 _multiplier = (float)(cond.song.pitch * ctrl.playerOne.planetarySystem.speed);
                 PlayCount.PlayData data = _hash != null ? PlayCount.GetData(_hash) : null;
-                _storedBest = data != null && data.Best.TryGetValue((_startProgress, _multiplier), out float b) ? b : 0f;
-                if (!_autoOnce && _hash != null)
+                _storedBest = _recorded?.Best ?? (data != null && data.Best.TryGetValue((_startProgress, _multiplier), out float b) ? b : 0f);
+                if (!_autoOnce && !_replaying && _hash != null)
                 {
                     PlayCount.AddAttempt(_hash, _startProgress, _multiplier);
                 }
@@ -462,17 +474,21 @@ namespace NowOverlayer
                 _songPlaying = false;
                 _combo = 0;
                 _maxCombo = 0;
-                _playStart = Time.unscaledTime;
-                _fullRun = _startProgress == 0f && scrController.checkpointsUsed == 0 && !GCS.practiceMode;
+                _playStart = PlayClock.Now;
+                _playStartUtc = DateTime.UtcNow;
+                _fullRun = _recorded?.FullRun ?? (_startProgress == 0f && scrController.checkpointsUsed == 0 && !GCS.practiceMode);
                 _result.Hide();
-                Obs.Fire(Main.Settings.ObsOnStart);
-                Discord.MarkPlayStart();
+                if (!_replaying)
+                {
+                    Obs.Fire(Main.Settings.ObsOnStart);
+                    Discord.MarkPlayStart();
+                }
                 _timingSum = 0;
                 _timingCount = 0;
                 _shown = true;
                 _dirty = true;
                 foreach (ElementView v in Views) v.OnLevelStart();
-                PlayIntro();
+                if (!seek) PlayIntro();
             }
             catch (Exception e)
             {
@@ -485,12 +501,13 @@ namespace NowOverlayer
             if (!_shown) return;
             _shown = false;
             _result?.Hide();
-            Obs.EndAttempt();
+            RunClockRecorder.Stop();
+            if (!_replaying) Obs.EndAttempt();
             try
             {
                 float p = Progress();
                 SaveBest(p);
-                if (_hash != null && !_autoOnce && _startProgress == p)
+                if (_hash != null && !_autoOnce && !_replaying && _startProgress == p)
                 {
                     PlayCount.RemoveAttempt(_hash, _startProgress, _multiplier);
                 }
@@ -509,6 +526,7 @@ namespace NowOverlayer
             ResultCard.Data d = ResultData(false, Progress());
             SaveBest(Progress());
             if (Main.Settings.ResultOnDeath && d != null) _result.Show(d, Main.Settings.ResultSeconds);
+            if (_replaying) return;
             if (d != null) Capture.Schedule(false, d.NewBestProgress, d.Title);
             Obs.Fire(Main.Settings.ObsOnDeath);
         }
@@ -525,13 +543,16 @@ namespace NowOverlayer
             SaveBest(1f);
             if (d != null && _fullRun && !_autoOnce)
             {
-                Stats.ClearResult r = Stats.RecordClear(_hash, d.XAcc, d.Acc);
+                // a replay compares with the run's own records, as the card did then, and saves nothing
+                Stats.MapStat before = _replaying ? _recorded?.Map ?? Stats.Get(_hash) : null;
+                Stats.ClearResult r = _replaying ? Stats.Compare(before, d.XAcc, d.Acc) : Stats.RecordClear(_hash, d.XAcc, d.Acc);
                 d.FirstClear = r.FirstClear;
                 d.NewBestXAcc = r.NewBestXAcc;
-                d.MapBestXAcc = Stats.Get(_hash)?.BestXAcc ?? -1f;
+                d.MapBestXAcc = _replaying ? Mathf.Max(before?.BestXAcc ?? -1f, d.XAcc) : Stats.Get(_hash)?.BestXAcc ?? -1f;
             }
             bool late = Main.Settings.ResultOnClear && Main.Settings.ReplaceGameResult;
             if (Main.Settings.ResultOnClear && d != null) _result.Show(d, late ? 0f : Main.Settings.ResultSeconds, late ? ClearCardDelay : 0f);
+            if (_replaying) return;
             if (d != null) Capture.Schedule(true, d.FirstClear || d.NewBestXAcc || d.NewBestProgress, d.Title, late ? ClearCardDelay + 0.7f : 0f);
             Obs.Fire(Main.Settings.ObsOnClear);
         }
@@ -540,7 +561,52 @@ namespace NowOverlayer
         private string _hashKey, _title = "", _artist = "";
         private int _maxCombo;
         private float _playStart;
+        private DateTime _playStartUtc;
         private bool _fullRun;
+
+        // ---- TUFReplay (TUFReplayApi) ----
+
+        private bool _replaying;   // this level is a TUFReplay replay of a recorded run
+        private RunState _recorded; // that run's values, or null when it saved none
+        private int _replaySession;
+
+        // As TUFReplay starts recording this run: what the overlay shows now, saved with the run.
+        public RunState CaptureRunState()
+        {
+            scrConductor cond = scrConductor.instance;
+            if (!_shown || _replaying || !cond) return null;
+            PlayCount.PlayData d = _hash != null ? PlayCount.GetData(_hash, _hashKey) : null;
+            var state = new RunState
+            {
+                Attempt = d?.GetAttempts(_startProgress, _multiplier) ?? 0,
+                FullAttempt = d?.GetAllAttempts() ?? 0,
+                Best = Finite(_storedBest),
+                FullRun = _fullRun,
+                Checkpoints = scrController.checkpointsUsed,
+                NoRecords = _autoOnce,
+                Map = Copy(Stats.Get(_hashKey)),
+                StartedAt = _playStartUtc,
+                Clock = new RunClockAnchor { At = DateTime.UtcNow, SongTime = cond.songposition_minusi }
+            };
+            RunClockRecorder.Start(state.Clock);
+            return state;
+        }
+
+        // TUFReplay saves only finite numbers
+        private static float Finite(float v) => float.IsNaN(v) || float.IsInfinity(v) ? 0f : v;
+
+        private static Stats.MapStat Copy(Stats.MapStat m) => m == null ? null : new Stats.MapStat
+        {
+            BestXAcc = Finite(m.BestXAcc), BestAcc = Finite(m.BestAcc), FirstClear = m.FirstClear, Clears = m.Clears
+        };
+
+        // The run's play time: from the level start to now on its own clock while it is replayed.
+        private float PlayTime()
+        {
+            DateTime? now = _recorded != null ? ReplayRun.WallClock() : null;
+            if (now != null) return Mathf.Max(0f, (float)(now.Value - _recorded.StartedAt).TotalSeconds);
+            return PlayClock.Now - _playStart;
+        }
 
         private ResultCard.Data ResultData(bool cleared, float progress)
         {
@@ -555,7 +621,7 @@ namespace NowOverlayer
                 Acc = s.Acc,
                 Best = Mathf.Max(_storedBest, progress),
                 NewBestProgress = !_autoOnce && progress > _storedBest && _storedBest > 0f,
-                Time = Time.unscaledTime - _playStart,
+                Time = PlayTime(),
                 MaxCombo = _maxCombo,
                 Hits = (int[])s.Hits.Clone(),
                 FullRun = _fullRun && !_autoOnce,
@@ -588,7 +654,7 @@ namespace NowOverlayer
         private void SaveBest(float progress)
         {
             if (_lastSavedStart == -1f) return;
-            if (!_autoOnce && _hash != null)
+            if (!_autoOnce && !_replaying && _hash != null)
             {
                 PlayCount.SetBest(_hash, _lastSavedStart, progress, _multiplier);
             }
@@ -648,12 +714,15 @@ namespace NowOverlayer
                 _songCheckAt = Time.unscaledTime + 0.5f; // the editor adds / hides items without ApplySettings
                 RefreshShowsSong();
             }
-            if (_shown && Main.Settings.DiscordEnabled && Time.unscaledTime >= _discordGather)
+            // a replay is not a play: Discord shows the idle status
+            bool playing = _shown && !_replaying;
+            if (playing) RunClockRecorder.Tick(scrConductor.instance);
+            if (playing && Main.Settings.DiscordEnabled && Time.unscaledTime >= _discordGather)
             {
                 _discordGather = Time.unscaledTime + 1f;
                 Gather();
             }
-            Discord.Tick(_shown ? _snap : null, Time.unscaledTime);
+            Discord.Tick(playing ? _snap : null, Time.unscaledTime);
             _toast?.Tick();
             _result?.Tick();
 
@@ -666,7 +735,8 @@ namespace NowOverlayer
             if (_elements.gameObject.activeSelf != content) _elements.gameObject.SetActive(content);
             if (!content) return;
 
-            _refreshTimer -= dt;
+            float playDt = PlayClock.Delta;
+            _refreshTimer -= playDt;
             if (_dirty || _refreshTimer <= 0f)
             {
                 _refreshTimer = RefreshInterval;
@@ -686,7 +756,11 @@ namespace NowOverlayer
                     if (v.Cfg.Visible) v.Render(s);
                 }
             }
-            foreach (ElementView v in Views) v.Tick(dt);
+            foreach (ElementView v in Views)
+            {
+                v.SyncShown();
+                v.Tick(playDt);
+            }
             TickIntro();
         }
 
@@ -738,18 +812,20 @@ namespace NowOverlayer
                 Array.Copy(h, s.Hits, Math.Min(h.Length, s.Hits.Length));
 
                 s.Combo = _combo;
-                PlayCount.PlayData d = _hash != null ? PlayCount.GetData(_hash, _hashKey) : null;
-                s.Attempt = d?.GetAttempts(_startProgress, _multiplier) ?? 0;
-                s.FullAttempt = d?.GetAllAttempts() ?? 0;
+                RunState rec = _recorded;
+                PlayCount.PlayData d = rec == null && _hash != null ? PlayCount.GetData(_hash, _hashKey) : null;
+                s.Attempt = rec?.Attempt ?? d?.GetAttempts(_startProgress, _multiplier) ?? 0;
+                s.FullAttempt = rec?.FullAttempt ?? d?.GetAllAttempts() ?? 0;
                 s.HasTiming = _timingCount > 0;
                 s.Timing = _lastTiming;
                 s.AvgTiming = _timingCount > 0 ? (float)(_timingSum / _timingCount) : 0f;
-                s.Fps = _fps;
+                s.Fps = ReplayRun.Rendering && ReplayRun.RenderFps > 0 ? ReplayRun.RenderFps : _fps;
+                s.RunClock = rec != null ? ReplayRun.WallClock()?.ToLocalTime() : null;
                 s.Tile = ctrl.currentSeqID;
                 s.TotalTiles = ADOBase.lm.listFloors.Count - 1;
-                s.Checkpoints = scrController.checkpointsUsed;
+                s.Checkpoints = rec?.Checkpoints ?? scrController.checkpointsUsed;
                 s.MaxCombo = _maxCombo;
-                Stats.MapStat ms = Stats.Get(_hashKey);
+                Stats.MapStat ms = rec != null ? rec.Map : Stats.Get(_hashKey);
                 s.MapBestXAcc = ms?.BestXAcc ?? -1f;
                 s.MapBestAcc = ms?.BestAcc ?? -1f;
                 s.FirstClear = ms?.FirstClear;

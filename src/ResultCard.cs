@@ -435,7 +435,7 @@ namespace NowOverlayer
                 _rows[i].Group.alpha = counts[i] == 0 && i >= 4 ? EmptyRowAlpha : 1f; // empty bad rows step back
             }
 
-            _shownAt = UnityEngine.Time.unscaledTime + delay;
+            _shownAt = PlayClock.Now + delay;
             _until = seconds > 0f ? _shownAt + seconds : float.MaxValue;
             _root.gameObject.SetActive(true);
             // full screen goes over the rest of the overlay and the game's own UI (only works on an active canvas)
@@ -463,7 +463,7 @@ namespace NowOverlayer
         {
             _mini.Tick();
             if (!_root.gameObject.activeSelf || _d == null) return;
-            float now = UnityEngine.Time.unscaledTime;
+            float now = PlayClock.Now;
             float t = now - _shownAt;
             if (t < 0f)
             {
@@ -679,7 +679,7 @@ namespace NowOverlayer
                     _targets[i] = counts[i];
                     _cells[i].alpha = counts[i] == 0 ? ZeroAlpha : 1f;
                 }
-                _shownAt = UnityEngine.Time.unscaledTime;
+                _shownAt = PlayClock.Now;
                 _until = seconds > 0f ? _shownAt + seconds : float.MaxValue;
                 Root.gameObject.SetActive(true);
                 Root.SetAsLastSibling();
@@ -691,7 +691,7 @@ namespace NowOverlayer
             public void Tick()
             {
                 if (!Root.gameObject.activeSelf) return;
-                float now = UnityEngine.Time.unscaledTime, t = now - _shownAt;
+                float now = PlayClock.Now, t = now - _shownAt;
                 Rect screen = ((RectTransform)Root.parent).rect;
                 float sc = Main.Settings.ResultScale;
                 float target = screen.width / 2f - MarginRight - MW / 2f * sc;

@@ -35,6 +35,12 @@ namespace NowOverlayer
             {
                 Main.LogError("Close UMM window failed", e);
             }
+            if (ReplayRun.Active)
+            {
+                // the editor freezes the level and takes the game's input, which a TUFReplay replay needs
+                Overlay.Instance.ShowToast("리플레이가 끝나면 화면 편집을 열 수 있어요");
+                return;
+            }
             EditorScene.Enter(); // freeze the level, stop game input
             // grab the game screen first (mod window closed, overlay hidden, other mods still on) as the still that
             // covers the live game; the other mods' HUDs are hidden once it is up

@@ -19,6 +19,7 @@ namespace NowOverlayer
         public float MapBestXAcc = -1f, MapBestAcc = -1f;
         public string FirstClear;
         public int Clears, MaxCombo;
+        public DateTime? RunClock; // a replayed run's own clock; null = now
 
         public static Snapshot Sample()
         {
@@ -69,7 +70,7 @@ namespace NowOverlayer
                 case ElementType.Fps:
                     return "FPS | " + Fps;
                 case ElementType.Clock:
-                    return DateTime.Now.ToString("HH:mm:ss");
+                    return ClockText();
                 case ElementType.SongInfo:
                     return Artist.Length > 0 ? Artist + " - " + Title : Title;
                 case ElementType.TileInfo:
@@ -114,7 +115,7 @@ namespace NowOverlayer
                 case "Timing": return HasTiming ? Ms(Timing) : "-";
                 case "AvgTiming": return HasTiming ? Ms(AvgTiming) : "-";
                 case "FPS": return Fps.ToString();
-                case "Clock": return DateTime.Now.ToString("HH:mm:ss");
+                case "Clock": return ClockText();
                 case "Title": return Title;
                 case "Artist": return Artist;
                 case "Tile": return Tile.ToString();
@@ -190,6 +191,8 @@ namespace NowOverlayer
         }
 
         // ---- formatting ----
+
+        private string ClockText() => (RunClock ?? DateTime.Now).ToString("HH:mm:ss");
 
         private static string Pct(float v) => Math.Round(v * 100f, 2) + "%";
 

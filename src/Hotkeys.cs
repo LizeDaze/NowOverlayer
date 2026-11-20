@@ -80,7 +80,9 @@ namespace NowOverlayer
         {
             // skip while typing in the mod window's text fields
             bool typing = GUIUtility.keyboardControl != 0 && UnityModManagerNet.UnityModManager.UI.Instance != null && UnityModManagerNet.UnityModManager.UI.Instance.Opened;
-            if (Capturing || typing) return;
+            // TUFReplay presses a replayed run's keys again through the OS, so a hotkey pressed in the run would fire
+            // again and change the settings
+            if (Capturing || typing || ReplayRun.Active) return;
             Settings s = Main.Settings;
             Overlay o = Overlay.Instance;
             if (!o) return;
